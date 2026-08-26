@@ -3,53 +3,96 @@
     import * as pdfjsLib from "pdfjs-dist";
     import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
-    type Question = { id: string; text: string };
+    type Question = {
+        id: string;
+        text: string;
+        marks?: number;
+        options?: string[];
+    };
     type Evaluation = {
         question_id: string;
         status: "answered" | "unanswered";
-        score?: string;
+        score_awarded?: number;
+        score_string?: string;
         feedback?: string;
         page_index?: number;
         bounding_box?: [number, number, number, number];
     };
+    type MetaData = { grade_level?: string; subject?: string };
     type ImageData = { base64: string; mimeType: string; dataUrl: string };
+    type FileCache = { name: string; size: number; lastModified: number };
 
     let questionFile = $state<File | null>(null);
     let answerFile = $state<File | null>(null);
 
     let isProcessing = $state(false);
-    let progressStatus = $state<string | null>(null); // NEW: Track exact status
+    let progressStatus = $state<string | null>(null);
     let errorMessage = $state<string | null>(null);
 
+    let examMeta = $state<MetaData | null>(null);
     let questions = $state<Question[]>([]);
     let evaluations = $state<Evaluation[]>([]);
     let answerImages = $state<string[]>([]);
-
     let activeQuestionId = $state<string | null>(null);
 
+    let cachedQuestionFile = $state<FileCache | null>(null);
+    let cachedQuestionImages = $state<ImageData[]>([]);
+
+    let totalMaxMarks = $derived(
+        questions.reduce((sum, q) => sum + (q.marks || 0), 0),
+    );
+    let totalScore = $derived(
+        evaluations.reduce((sum, ev) => sum + (ev.score_awarded || 0), 0),
+    );
+
     onMount(() => {
-        // Production-safe Vite worker loading
         pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
     });
 
-    // Memory optimized & handles BOTH images and PDFs concurrently
     async function fileToImages(file: File): Promise<ImageData[]> {
+        const MAX_DIMENSION = 1024;
+        const JPEG_QUALITY = 0.5;
+
         if (file.type.startsWith("image/")) {
             return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const dataUrl = e.target?.result as string;
-                    if (!dataUrl) return reject("Failed to read image");
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+
+                img.onload = () => {
+                    URL.revokeObjectURL(objectUrl);
+                    let { width, height } = img;
+
+                    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                        const ratio = Math.min(
+                            MAX_DIMENSION / width,
+                            MAX_DIMENSION / height,
+                        );
+                        width = Math.round(width * ratio);
+                        height = Math.round(height * ratio);
+                    }
+
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext("2d");
+                    if (!ctx) return reject("Canvas failed");
+
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const dataUrl = canvas.toDataURL(
+                        "image/jpeg",
+                        JPEG_QUALITY,
+                    );
+
                     resolve([
                         {
                             base64: dataUrl.split(",")[1],
-                            mimeType: file.type,
+                            mimeType: "image/jpeg",
                             dataUrl,
                         },
                     ]);
                 };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
+                img.onerror = reject;
+                img.src = objectUrl;
             });
         }
 
@@ -58,21 +101,25 @@
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer })
                 .promise;
 
-            // Concurrency to utilize CPU effectively
-            // Inside fileToImages(file: File)
-            // ...
             const pagePromises = Array.from(
                 { length: pdf.numPages },
                 async (_, i) => {
                     const page = await pdf.getPage(i + 1);
+                    const unscaledViewport = page.getViewport({ scale: 1.0 });
 
-                    // REDUCED SCALE: 1.2 is the sweet spot for AI OCR speed vs accuracy
-                    const viewport = page.getViewport({ scale: 1.2 });
+                    const scale = Math.min(
+                        1.0,
+                        MAX_DIMENSION /
+                            Math.max(
+                                unscaledViewport.width,
+                                unscaledViewport.height,
+                            ),
+                    );
+                    const viewport = page.getViewport({ scale });
 
                     const canvas = document.createElement("canvas");
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
-
                     const ctx = canvas.getContext("2d");
                     if (!ctx) throw new Error("Canvas rendering failed");
 
@@ -82,8 +129,10 @@
                     } as unknown as Parameters<typeof page.render>[0];
                     await page.render(renderParams).promise;
 
-                    // COMPRESSION: 0.7 quality drastically speeds up network transfer
-                    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                    const dataUrl = canvas.toDataURL(
+                        "image/jpeg",
+                        JPEG_QUALITY,
+                    );
                     return {
                         base64: dataUrl.split(",")[1],
                         mimeType: "image/jpeg",
@@ -91,11 +140,18 @@
                     };
                 },
             );
-
             return await Promise.all(pagePromises);
         }
+        throw new Error("Unsupported file type.");
+    }
 
-        throw new Error("Unsupported file type. Please upload a PDF or Image.");
+    function isSameFile(file: File, cache: FileCache | null) {
+        if (!cache) return false;
+        return (
+            file.name === cache.name &&
+            file.size === cache.size &&
+            file.lastModified === cache.lastModified
+        );
     }
 
     async function startMapping() {
@@ -103,41 +159,69 @@
 
         isProcessing = true;
         errorMessage = null;
+        evaluations = [];
+        activeQuestionId = null;
 
         try {
-            // STEP 1: Local Conversion
-            progressStatus = "Preparing documents (Client-side)...";
-            const qImages = await fileToImages(questionFile);
+            progressStatus = "Preparing answer document...";
             const aImages = await fileToImages(answerFile);
             answerImages = aImages.map((img) => img.dataUrl);
 
-            // STEP 2: Question Extraction
-            progressStatus = "AI is extracting questions (Step 1 of 2)...";
-            const qRes = await fetch("/api/extract", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ images: qImages }),
-            });
-            if (!qRes.ok) throw new Error("Extraction failed");
-            const qData = await qRes.json();
-            questions = qData.questions;
+            let qImages: ImageData[] = [];
 
-            // STEP 3: Answer Mapping & Grading
-            progressStatus =
-                "AI is evaluating student answers (Step 2 of 2)...";
+            if (
+                isSameFile(questionFile, cachedQuestionFile) &&
+                questions.length > 0
+            ) {
+                progressStatus = "Using cached questions...";
+                qImages = cachedQuestionImages;
+            } else {
+                progressStatus = "Preparing question document...";
+                qImages = await fileToImages(questionFile);
+
+                progressStatus = "Extracting questions & metadata...";
+                const qRes = await fetch("/api/extract", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ images: qImages }),
+                });
+
+                if (!qRes.ok) {
+                    const err = await qRes.json();
+                    throw new Error(err.error || "Extraction failed");
+                }
+                const qData = await qRes.json();
+
+                examMeta = qData.metadata;
+                questions = qData.questions;
+
+                cachedQuestionFile = {
+                    name: questionFile.name,
+                    size: questionFile.size,
+                    lastModified: questionFile.lastModified,
+                };
+                cachedQuestionImages = qImages;
+            }
+
+            progressStatus = "Evaluating student answers...";
             const aRes = await fetch("/api/evaluate", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ questions, answerImages: aImages }),
+                body: JSON.stringify({
+                    metadata: examMeta,
+                    questions,
+                    answerImages: aImages,
+                }),
             });
-            if (!aRes.ok) throw new Error("Evaluation failed");
+
+            if (!aRes.ok) {
+                const err = await aRes.json();
+                throw new Error(err.error || "Evaluation failed");
+            }
             const aData = await aRes.json();
             evaluations = aData.evaluations;
 
-            // DONE
             progressStatus = "Complete!";
-
-            // Clear status after 2 seconds
             setTimeout(() => {
                 progressStatus = null;
             }, 2000);
@@ -191,7 +275,6 @@
                 Start Mapping
             </button>
 
-            <!-- NEW: Progress Status Display -->
             {#if progressStatus}
                 <span
                     class="text-sm font-bold {progressStatus === 'Complete!'
@@ -207,6 +290,25 @@
     {#if questions.length > 0}
         <div class="flex flex-1 gap-4 overflow-hidden">
             <div class="flex flex-col gap-2 w-1/3 overflow-y-auto border p-2">
+                {#if examMeta}
+                    <div
+                        class="bg-gray-100 p-2 flex flex-col gap-1 border-b mb-2"
+                    >
+                        <div
+                            class="text-sm text-gray-700 font-bold text-center"
+                        >
+                            {examMeta.grade_level || "Unknown Class"} - {examMeta.subject ||
+                                "Unknown Subject"}
+                        </div>
+                        {#if evaluations.length > 0}
+                            <div
+                                class="text-lg text-black font-extrabold text-center bg-green-200 py-1 rounded"
+                            >
+                                Total Score: {totalScore} / {totalMaxMarks}
+                            </div>
+                        {/if}
+                    </div>
+                {/if}
                 {#each questions as q (q.id)}
                     {@const ev = evaluations.find(
                         (e) => e.question_id === q.id,
@@ -235,19 +337,35 @@
                                     >
                                 {:else}
                                     <span
-                                        style="color: green; font-weight: bold;"
-                                        >{ev.score}</span
+                                        style="color: {ev.score_awarded ===
+                                        q.marks
+                                            ? 'green'
+                                            : 'orange'}; font-weight: bold;"
                                     >
+                                        {ev.score_string}
+                                    </span>
                                 {/if}
                             {/if}
                         </div>
 
                         <p>{q.text}</p>
 
+                        {#if q.options && q.options.length > 0}
+                            <div class="text-xs text-gray-500 pl-2 border-l-2">
+                                {#each q.options as opt (opt)}
+                                    <div>{opt}</div>
+                                {/each}
+                            </div>
+                        {/if}
+
+                        <span class="text-xs text-gray-500"
+                            >Max Marks: {q.marks || "?"}</span
+                        >
+
                         {#if activeQuestionId === q.id && ev?.feedback}
                             <div
                                 class="p-2 border"
-                                style="background-color: #fff7ed; border-color: #fdba74;"
+                                style="background-color: #fff7ed; border-color: #fdba74; font-size: 14px;"
                             >
                                 <strong>Feedback:</strong>
                                 {ev.feedback}
