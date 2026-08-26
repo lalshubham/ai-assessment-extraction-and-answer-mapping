@@ -1,7 +1,5 @@
 <script lang="ts">
-    import { onMount } from "svelte";
-    import * as pdfjsLib from "pdfjs-dist";
-    import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+    import { type ImageData, processFileToImages } from "$lib/utils/file";
 
     type Question = {
         id: string;
@@ -19,7 +17,6 @@
         bounding_box?: [number, number, number, number];
     };
     type MetaData = { grade_level?: string; subject?: string };
-    type ImageData = { base64: string; mimeType: string; dataUrl: string };
     type FileCache = { name: string; size: number; lastModified: number };
 
     let questionFile = $state<File | null>(null);
@@ -45,106 +42,6 @@
         evaluations.reduce((sum, ev) => sum + (ev.score_awarded || 0), 0),
     );
 
-    onMount(() => {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-    });
-
-    async function fileToImages(file: File): Promise<ImageData[]> {
-        const MAX_DIMENSION = 1024;
-        const JPEG_QUALITY = 0.5;
-
-        if (file.type.startsWith("image/")) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                const objectUrl = URL.createObjectURL(file);
-
-                img.onload = () => {
-                    URL.revokeObjectURL(objectUrl);
-                    let { width, height } = img;
-
-                    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
-                        const ratio = Math.min(
-                            MAX_DIMENSION / width,
-                            MAX_DIMENSION / height,
-                        );
-                        width = Math.round(width * ratio);
-                        height = Math.round(height * ratio);
-                    }
-
-                    const canvas = document.createElement("canvas");
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext("2d");
-                    if (!ctx) return reject("Canvas failed");
-
-                    ctx.drawImage(img, 0, 0, width, height);
-                    const dataUrl = canvas.toDataURL(
-                        "image/jpeg",
-                        JPEG_QUALITY,
-                    );
-
-                    resolve([
-                        {
-                            base64: dataUrl.split(",")[1],
-                            mimeType: "image/jpeg",
-                            dataUrl,
-                        },
-                    ]);
-                };
-                img.onerror = reject;
-                img.src = objectUrl;
-            });
-        }
-
-        if (file.type === "application/pdf") {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer })
-                .promise;
-
-            const pagePromises = Array.from(
-                { length: pdf.numPages },
-                async (_, i) => {
-                    const page = await pdf.getPage(i + 1);
-                    const unscaledViewport = page.getViewport({ scale: 1.0 });
-
-                    const scale = Math.min(
-                        1.0,
-                        MAX_DIMENSION /
-                            Math.max(
-                                unscaledViewport.width,
-                                unscaledViewport.height,
-                            ),
-                    );
-                    const viewport = page.getViewport({ scale });
-
-                    const canvas = document.createElement("canvas");
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    const ctx = canvas.getContext("2d");
-                    if (!ctx) throw new Error("Canvas rendering failed");
-
-                    const renderParams = {
-                        canvasContext: ctx,
-                        viewport,
-                    } as unknown as Parameters<typeof page.render>[0];
-                    await page.render(renderParams).promise;
-
-                    const dataUrl = canvas.toDataURL(
-                        "image/jpeg",
-                        JPEG_QUALITY,
-                    );
-                    return {
-                        base64: dataUrl.split(",")[1],
-                        mimeType: "image/jpeg",
-                        dataUrl,
-                    };
-                },
-            );
-            return await Promise.all(pagePromises);
-        }
-        throw new Error("Unsupported file type.");
-    }
-
     function isSameFile(file: File, cache: FileCache | null) {
         if (!cache) return false;
         return (
@@ -163,35 +60,37 @@
         activeQuestionId = null;
 
         try {
-            progressStatus = "Preparing answer document...";
-            const aImages = await fileToImages(answerFile);
-            answerImages = aImages.map((img) => img.dataUrl);
-
-            let qImages: ImageData[] = [];
-
-            if (
+            progressStatus = "Preparing files (Parallel)...";
+            const [qImages, aImages] = await Promise.all([
                 isSameFile(questionFile, cachedQuestionFile) &&
                 questions.length > 0
-            ) {
-                progressStatus = "Using cached questions...";
-                qImages = cachedQuestionImages;
-            } else {
-                progressStatus = "Preparing question document...";
-                qImages = await fileToImages(questionFile);
+                    ? Promise.resolve(cachedQuestionImages)
+                    : processFileToImages(questionFile),
+                processFileToImages(answerFile),
+            ]);
 
+            answerImages = aImages.map((img) => img.dataUrl);
+
+            if (
+                !isSameFile(questionFile, cachedQuestionFile) ||
+                questions.length === 0
+            ) {
                 progressStatus = "Extracting questions & metadata...";
+                const qFormData = new FormData();
+                qImages.forEach((img) =>
+                    qFormData.append("images", img.blob, "page.jpg"),
+                );
+
                 const qRes = await fetch("/api/extract", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ images: qImages }),
+                    body: qFormData,
                 });
+                if (!qRes.ok)
+                    throw new Error(
+                        (await qRes.json()).error || "Extraction failed",
+                    );
 
-                if (!qRes.ok) {
-                    const err = await qRes.json();
-                    throw new Error(err.error || "Extraction failed");
-                }
                 const qData = await qRes.json();
-
                 examMeta = qData.metadata;
                 questions = qData.questions;
 
@@ -204,22 +103,23 @@
             }
 
             progressStatus = "Evaluating student answers...";
+            const aFormData = new FormData();
+            aFormData.append("metadata", JSON.stringify(examMeta));
+            aFormData.append("questions", JSON.stringify(questions));
+            aImages.forEach((img) =>
+                aFormData.append("images", img.blob, "answer.jpg"),
+            );
+
             const aRes = await fetch("/api/evaluate", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    metadata: examMeta,
-                    questions,
-                    answerImages: aImages,
-                }),
+                body: aFormData,
             });
+            if (!aRes.ok)
+                throw new Error(
+                    (await aRes.json()).error || "Evaluation failed",
+                );
 
-            if (!aRes.ok) {
-                const err = await aRes.json();
-                throw new Error(err.error || "Evaluation failed");
-            }
-            const aData = await aRes.json();
-            evaluations = aData.evaluations;
+            evaluations = (await aRes.json()).evaluations;
 
             progressStatus = "Complete!";
             setTimeout(() => {
@@ -274,7 +174,6 @@
             >
                 Start Mapping
             </button>
-
             {#if progressStatus}
                 <span
                     class="text-sm font-bold {progressStatus === 'Complete!'
@@ -333,8 +232,9 @@
                                 {#if ev.status === "unanswered"}
                                     <span
                                         style="color: red; border: 1px solid red; padding: 2px; font-size: 12px;"
-                                        >Not Attempted</span
                                     >
+                                        Not Attempted
+                                    </span>
                                 {:else}
                                     <span
                                         style="color: {ev.score_awarded ===
@@ -347,9 +247,7 @@
                                 {/if}
                             {/if}
                         </div>
-
                         <p>{q.text}</p>
-
                         {#if q.options && q.options.length > 0}
                             <div class="text-xs text-gray-500 pl-2 border-l-2">
                                 {#each q.options as opt (opt)}
@@ -357,11 +255,9 @@
                                 {/each}
                             </div>
                         {/if}
-
-                        <span class="text-xs text-gray-500"
-                            >Max Marks: {q.marks || "?"}</span
-                        >
-
+                        <span class="text-xs text-gray-500">
+                            Max Marks: {q.marks || "?"}
+                        </span>
                         {#if activeQuestionId === q.id && ev?.feedback}
                             <div
                                 class="p-2 border"
@@ -385,24 +281,32 @@
                             alt="Page {index + 1}"
                             class="w-full block"
                         />
-
                         {#each evaluations as ev (ev.question_id)}
                             {#if ev.page_index === index && ev.bounding_box && ev.status !== "unanswered"}
                                 <div
                                     class="absolute border-2"
                                     style="
-										border-color: {activeQuestionId === ev.question_id
+                                        border-color: {activeQuestionId ===
+                                    ev.question_id
                                         ? '#22c55e'
                                         : 'rgba(96, 165, 250, 0.5)'};
-										background-color: {activeQuestionId === ev.question_id
+                                        background-color: {activeQuestionId ===
+                                    ev.question_id
                                         ? 'rgba(34, 197, 94, 0.2)'
                                         : 'rgba(96, 165, 250, 0.1)'};
-										z-index: {activeQuestionId === ev.question_id ? 20 : 10};
-										top: {ev.bounding_box[0] / 10}%; 
-										left: {ev.bounding_box[1] / 10}%; 
-										width: {(ev.bounding_box[3] - ev.bounding_box[1]) / 10}%; 
-										height: {(ev.bounding_box[2] - ev.bounding_box[0]) / 10}%;
-									"
+                                        z-index: {activeQuestionId ===
+                                    ev.question_id
+                                        ? 20
+                                        : 10};
+                                        top: {ev.bounding_box[0] / 10}%; 
+                                        left: {ev.bounding_box[1] / 10}%; 
+                                        width: {(ev.bounding_box[3] -
+                                        ev.bounding_box[1]) /
+                                        10}%; 
+                                        height: {(ev.bounding_box[2] -
+                                        ev.bounding_box[0]) /
+                                        10}%;
+                                    "
                                 >
                                     {#if activeQuestionId === ev.question_id}
                                         <span

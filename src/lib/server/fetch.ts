@@ -27,9 +27,9 @@ export default async function fetchAPI<T>(
                 throw error;
             }
 
-            console.warn(`Network glitch detected. Retrying ${apiName}... (${i + 1}/${retries})`);
+            console.warn(`[${apiName}] Network glitch detected. Retrying... (${i + 1}/${retries})`);
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
     }
-    throw new Error(`Failed after ${retries} retries`);
+    throw new Error(`[${apiName}] Failed after ${retries} retries`);
 }
