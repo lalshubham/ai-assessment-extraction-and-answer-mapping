@@ -3,7 +3,10 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-export type ImageData = { blob: Blob; dataUrl: string };
+export type ImageData = {
+    blob: Blob;
+    dataUrl: string
+};
 
 export async function processFileToImages(file: File): Promise<ImageData[]> {
     const JPEG_QUALITY = 0.85;

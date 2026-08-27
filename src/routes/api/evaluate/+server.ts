@@ -2,11 +2,21 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import fetchAPI from '$lib/server/fetch';
-import { parseAIResponse } from '$lib/server/parser';
+import { fetchAPI, parseResponse } from '$lib/server/fetch';
 
-type ContentPart = { text: string } | { inlineData: { data: string; mimeType: string } };
-type MetaData = { grade_level?: string; subject?: string };
+type ContentPart = {
+	text: string
+} | {
+	inlineData: {
+		data: string;
+		mimeType: string
+	}
+};
+
+type MetaData = {
+	grade_level?: string;
+	subject?: string
+};
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
@@ -36,21 +46,24 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		parts.push({
-			text: `You are an expert ${metadata.subject || 'school'} teacher for ${metadata.grade_level || 'students'}. 
+			text: `You are an expert ${metadata.subject || 'school'} teacher for ${metadata.grade_level || 'students'}.
             Here are the questions in JSON format: ${JSON.stringify(questions)}
             
             For each question:
             1. Evaluate step-by-step.
-               - IF it is an MCQ, accept the option letter, option text, or both.
+               - Formulate the strict, standard academic answer for the provided grade level. Do not penalize for missing advanced or edge-case facts outside the standard curriculum scope.
+               - If the student uses vague terminology instead of exact scientific or academic terms, deduct marks appropriately for lack of precision.
+               - For MCQs, accept the option letter, option text, or both.
             2. Assign a numeric 'score_awarded' (use decimals for half marks).
-            3. Assign 'score_string' (e.g., '1.5/2'). DO NOT append feedback into this string.
-            4. Provide 'feedback' UNDER 10 WORDS.
+            3. Assign 'score_string' containing ONLY the fraction. DO NOT append feedback here.
+            4. Provide 'feedback'.
+               - CRITICAL: You are strictly FORBIDDEN from using vague summary words.
+               - If marks are deducted, clearly explain what was incorrect in the answer and what important information or points were missing.
             5. Provide a precise bounding box [ymin, xmin, ymax, xmax] on a 0-1000 scale.
-               - RULE 1 (Precision): Draw a tight, precise box around the student's attempt. DO NOT use arbitrary full-width coordinates like 0 and 1000.
-               - RULE 2 (Left Edge): The left edge MUST expand into the margin to perfectly enclose the handwritten question number (e.g., "1.", "11."). Treat the margin number and the main paragraph as a single connected visual block.
-               - RULE 3 (Right Edge): Wrap tightly around the rightmost edge of the student's handwriting.
-               - RULE 4 (Top & Bottom): Capture all text lines, diagrams, and labels belonging to this question. Stop immediately before the next question begins. Exclude printed section headers (e.g., "A. Choose the correct option").
-            6. ONLY set status to 'unanswered' (and omit the box) if the space is completely blank.`
+               - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
+               - RULE 2 (Right Edge): Scan every line of the student's answer. Push xmax past the absolute furthest word on the right so no trailing letters are cut off. Over-estimate slightly to be safe.
+               - RULE 3 (Top & Bottom): Capture all text lines, diagrams, and labels belonging to this question. Stop immediately before the next question begins. Exclude printed section headers.
+            6. Set status to 'unanswered' ONLY if the space is completely blank.`
 		});
 
 		const response = await fetchAPI(
@@ -59,7 +72,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				contents: parts,
 				config: {
 					maxOutputTokens: 8192,
-					temperature: 0.1,
+					temperature: 0.0,
 					responseMimeType: 'application/json',
 					responseSchema: {
 						type: Type.OBJECT,
@@ -69,19 +82,23 @@ export const POST: RequestHandler = async ({ request }) => {
 								items: {
 									type: Type.OBJECT,
 									properties: {
-										question_id: { type: Type.STRING },
+										question_id: {
+											type: Type.STRING
+										},
 										status: {
 											type: Type.STRING,
 											description: "'answered' or 'unanswered'"
 										},
-										score_awarded: { type: Type.NUMBER },
+										score_awarded: {
+											type: Type.NUMBER
+										},
 										score_string: {
 											type: Type.STRING,
-											description: "ONLY the fraction (e.g., '1/1'). NEVER include feedback words here."
+											description: "ONLY the fraction. NEVER include feedback words here."
 										},
 										feedback: {
 											type: Type.STRING,
-											description: "Specific feedback, maximum 10 words."
+											description: "Mention incorrect and missing data in the answer."
 										},
 										page_index: {
 											type: Type.INTEGER,
@@ -89,8 +106,10 @@ export const POST: RequestHandler = async ({ request }) => {
 										},
 										bounding_box: {
 											type: Type.ARRAY,
-											items: { type: Type.INTEGER },
-											description: "[ymin, xmin, ymax, xmax]. Must perfectly frame the answer, expanding left to explicitly include the marginal question number."
+											items: {
+												type: Type.INTEGER
+											},
+											description: "[ymin, xmin, ymax, xmax]. Push xmax safely to the right to prevent clipping trailing words."
 										}
 									},
 									required: ['question_id', 'status', 'score_string', 'page_index']
@@ -102,11 +121,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}),
 			2,
-			'evaluation API'
+			'Evaluation API'
 		);
 
 		try {
-			const parsedData = parseAIResponse(response.text || '{}') as Record<string, unknown>;
+			const parsedData = parseResponse(response.text || '{}') as Record<string, unknown>;
 			return json(parsedData);
 		}
 		catch (parseError) {

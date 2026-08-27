@@ -1,5 +1,9 @@
 <script lang="ts">
     import { type ImageData, processFileToImages } from "$lib/utils/file";
+    import UploadScreen from "$lib/components/UploadScreen.svelte";
+    import LoadingScreen from "$lib/components/LoadingScreen.svelte";
+    import QuestionPanel from "$lib/components/QuestionPanel.svelte";
+    import AnswerPanel from "$lib/components/AnswerPanel.svelte";
 
     type Question = {
         id: string;
@@ -7,6 +11,7 @@
         marks?: number;
         options?: string[];
     };
+
     type Evaluation = {
         question_id: string;
         status: "answered" | "unanswered";
@@ -16,7 +21,11 @@
         page_index?: number;
         bounding_box?: [number, number, number, number];
     };
-    type MetaData = { grade_level?: string; subject?: string };
+
+    type MetaData = {
+        grade_level?: string;
+        subject?: string;
+    };
 
     let currentScreen = $state<1 | 2 | 3>(1);
     let progressStatus = $state<string | null>(null);
@@ -165,59 +174,14 @@
     {/if}
 
     {#if currentScreen === 1}
-        <div class="flex flex-col items-center justify-center flex-1">
-            <div
-                class="flex flex-col gap-6 border p-8 shadow-sm bg-white rounded max-w-md w-full"
-            >
-                <h1 class="text-xl font-bold text-center">
-                    AI Assessment Mapper
-                </h1>
-
-                <label
-                    class="flex flex-col border p-3 cursor-pointer bg-gray-50 hover:bg-gray-100"
-                >
-                    <strong>1. Upload Question Paper</strong>
-                    <input
-                        type="file"
-                        accept=".pdf,image/*"
-                        onchange={(e) => handleFileUpload(e, "question")}
-                        class="mt-2"
-                    />
-                </label>
-
-                <label
-                    class="flex flex-col border p-3 cursor-pointer bg-gray-50 hover:bg-gray-100"
-                >
-                    <strong>2. Upload Answer Sheet</strong>
-                    <input
-                        type="file"
-                        accept=".pdf,image/*"
-                        onchange={(e) => handleFileUpload(e, "answer")}
-                        class="mt-2"
-                    />
-                </label>
-
-                <button
-                    disabled={!questionFile || !answerFile}
-                    onclick={() => runPipeline("full")}
-                    class="p-3 mt-2 border bg-black text-white font-bold cursor-pointer disabled:opacity-50"
-                >
-                    Start Mapping
-                </button>
-            </div>
-        </div>
+        <UploadScreen
+            {questionFile}
+            {answerFile}
+            onFileUpload={handleFileUpload}
+            onStart={() => runPipeline("full")}
+        />
     {:else if currentScreen === 2}
-        <div class="flex flex-col items-center justify-center flex-1">
-            <div
-                class="flex flex-col items-center gap-4 border p-12 shadow-sm bg-white rounded"
-            >
-                <div
-                    class="w-10 h-10 border-4 border-gray-200 border-t-black rounded-full animate-spin"
-                ></div>
-                <h2 class="text-xl font-bold">Processing</h2>
-                <p class="text-gray-600">{progressStatus}</p>
-            </div>
-        </div>
+        <LoadingScreen {progressStatus} />
     {:else if currentScreen === 3}
         <div
             class="flex items-center justify-between gap-4 border p-3 bg-gray-50 shadow-sm"
@@ -247,143 +211,15 @@
 
         {#if questions.length > 0}
             <div class="flex flex-1 gap-4 overflow-hidden min-h-0">
-                <div
-                    class="flex flex-col gap-2 w-1/3 overflow-y-auto border p-2"
-                >
-                    {#if examMeta}
-                        <div
-                            class="bg-gray-100 p-2 flex flex-col gap-1 border-b mb-2"
-                        >
-                            <div
-                                class="text-sm text-gray-700 font-bold text-center"
-                            >
-                                {examMeta.grade_level || "Unknown Class"} - {examMeta.subject ||
-                                    "Unknown Subject"}
-                            </div>
-                            {#if evaluations.length > 0}
-                                <div
-                                    class="text-lg text-black font-extrabold text-center bg-green-200 py-1 rounded"
-                                >
-                                    Total Score: {totalScore} / {totalMaxMarks}
-                                </div>
-                            {/if}
-                        </div>
-                    {/if}
-
-                    {#each questions as q (q.id)}
-                        {@const ev = evaluations.find(
-                            (e) => e.question_id === q.id,
-                        )}
-                        <!-- svelte-ignore a11y_click_events_have_key_events -->
-                        <!-- svelte-ignore a11y_no_static_element_interactions -->
-                        <div
-                            class="flex flex-col gap-2 p-2 border cursor-pointer"
-                            style="background-color: {activeQuestionId === q.id
-                                ? '#f3f4f6'
-                                : 'transparent'}; border-color: {activeQuestionId ===
-                            q.id
-                                ? 'black'
-                                : '#e5e7eb'};"
-                            onclick={() =>
-                                (activeQuestionId =
-                                    activeQuestionId === q.id ? null : q.id)}
-                        >
-                            <div class="flex justify-between items-center">
-                                <strong>{q.id}</strong>
-                                {#if ev}
-                                    {#if ev.status === "unanswered"}
-                                        <span
-                                            style="color: red; border: 1px solid red; padding: 2px; font-size: 12px;"
-                                            >Not Attempted</span
-                                        >
-                                    {:else}
-                                        <span
-                                            style="color: {ev.score_awarded ===
-                                            q.marks
-                                                ? 'green'
-                                                : 'orange'}; font-weight: bold;"
-                                            >{ev.score_string}</span
-                                        >
-                                    {/if}
-                                {/if}
-                            </div>
-                            <p>{q.text}</p>
-                            {#if q.options && q.options.length > 0}
-                                <div
-                                    class="text-xs text-gray-500 pl-2 border-l-2"
-                                >
-                                    {#each q.options as opt (opt)}
-                                        <div>{opt}</div>
-                                    {/each}
-                                </div>
-                            {/if}
-                            <span class="text-xs text-gray-500"
-                                >Max Marks: {q.marks || "?"}</span
-                            >
-                            {#if activeQuestionId === q.id && ev?.feedback}
-                                <div
-                                    class="p-2 border"
-                                    style="background-color: #fff7ed; border-color: #fdba74; font-size: 14px;"
-                                >
-                                    <strong>Feedback:</strong>
-                                    {ev.feedback}
-                                </div>
-                            {/if}
-                        </div>
-                    {/each}
-                </div>
-
-                <div
-                    class="flex flex-col gap-4 w-2/3 overflow-y-auto border p-4 bg-[#f9fafb]"
-                >
-                    {#each answerImages as imgUrl, index (index)}
-                        <div class="relative border w-full bg-white">
-                            <img
-                                src={imgUrl}
-                                alt="Page {index + 1}"
-                                class="w-full block"
-                            />
-                            {#each evaluations as ev (ev.question_id)}
-                                {#if (ev.page_index ?? 0) === index && ev.bounding_box && ev.bounding_box.length === 4 && ev.status !== "unanswered"}
-                                    <div
-                                        class="absolute border-2"
-                                        style="
-                                            border-color: {activeQuestionId ===
-                                        ev.question_id
-                                            ? '#22c55e'
-                                            : 'rgba(96, 165, 250, 0.5)'};
-                                            background-color: {activeQuestionId ===
-                                        ev.question_id
-                                            ? 'rgba(34, 197, 94, 0.2)'
-                                            : 'rgba(96, 165, 250, 0.1)'};
-                                            z-index: {activeQuestionId ===
-                                        ev.question_id
-                                            ? 20
-                                            : 10};
-                                            top: {ev.bounding_box[0] / 10}%; 
-                                            left: {ev.bounding_box[1] / 10}%; 
-                                            width: {(ev.bounding_box[3] -
-                                            ev.bounding_box[1]) /
-                                            10}%; 
-                                            height: {(ev.bounding_box[2] -
-                                            ev.bounding_box[0]) /
-                                            10}%;
-                                        "
-                                    >
-                                        {#if activeQuestionId === ev.question_id}
-                                            <span
-                                                class="absolute shadow"
-                                                style="top: -24px; left: -2px; background: #22c55e; color: white; padding: 2px 4px; font-size: 12px; font-weight: bold;"
-                                            >
-                                                Q{ev.question_id}
-                                            </span>
-                                        {/if}
-                                    </div>
-                                {/if}
-                            {/each}
-                        </div>
-                    {/each}
-                </div>
+                <QuestionPanel
+                    {examMeta}
+                    {questions}
+                    {evaluations}
+                    bind:activeQuestionId
+                    {totalScore}
+                    {totalMaxMarks}
+                />
+                <AnswerPanel {answerImages} {evaluations} {activeQuestionId} />
             </div>
         {/if}
     {/if}

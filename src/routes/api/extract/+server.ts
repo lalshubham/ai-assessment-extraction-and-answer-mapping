@@ -2,10 +2,16 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import fetchAPI from '$lib/server/fetch';
-import { parseAIResponse } from '$lib/server/parser';
+import { fetchAPI, parseResponse } from '$lib/server/fetch';
 
-type ContentPart = { text: string } | { inlineData: { data: string; mimeType: string } };
+type ContentPart = {
+    text: string
+} | {
+    inlineData: {
+        data: string;
+        mimeType: string
+    }
+};
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
@@ -30,9 +36,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
         parts.push({
             text: `Analyze this QUESTION PAPER image carefully.
-            1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject (e.g., "CLASS - VIII", "SCIENCE"). Do NOT assume this; read it explicitly from the image.
-            2. Extract all questions in their exact printed order. 
-            3. Treat labeled sub-parts as distinct questions. 
+            1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject. Do NOT assume this; read it explicitly from the image.
+            2. Extract all questions in their exact printed order.
+            3. Treat labeled sub-parts as distinct questions.
             4. Extract the maximum marks allocated for each question. CRITICAL: The marks MUST be a simple standard number (e.g., 1, 2, 5, 0.5). NEVER output scientific notation, complex fractions, or floating point errors (like 1.000005).
             5. IF the question is a Multiple Choice Question (MCQ), extract the options into an array.`
         });
@@ -49,17 +55,35 @@ export const POST: RequestHandler = async ({ request }) => {
                         properties: {
                             metadata: {
                                 type: Type.OBJECT,
-                                properties: { grade_level: { type: Type.STRING }, subject: { type: Type.STRING } }
+                                properties: {
+                                    grade_level: {
+                                        type: Type.STRING
+                                    },
+                                    subject: {
+                                        type: Type.STRING
+                                    }
+                                }
                             },
                             questions: {
                                 type: Type.ARRAY,
                                 items: {
                                     type: Type.OBJECT,
                                     properties: {
-                                        id: { type: Type.STRING },
-                                        text: { type: Type.STRING },
-                                        marks: { type: Type.NUMBER },
-                                        options: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                        id: {
+                                            type: Type.STRING
+                                        },
+                                        text: {
+                                            type: Type.STRING
+                                        },
+                                        marks: {
+                                            type: Type.NUMBER
+                                        },
+                                        options: {
+                                            type: Type.ARRAY,
+                                            items: {
+                                                type: Type.STRING
+                                            }
+                                        }
                                     },
                                     required: ['id', 'text']
                                 }
@@ -70,11 +94,11 @@ export const POST: RequestHandler = async ({ request }) => {
                 }
             }),
             2,
-            'extraction API'
+            'Extraction API'
         );
 
         try {
-            const parsedData = parseAIResponse(response.text || '{}') as Record<string, unknown>;
+            const parsedData = parseResponse(response.text || '{}') as Record<string, unknown>;
             return json(parsedData);
         }
         catch (parseError) {
