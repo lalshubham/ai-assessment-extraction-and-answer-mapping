@@ -42,10 +42,11 @@ export const POST: RequestHandler = async ({ request }) => {
             For each question:
             1. Find the handwritten answer matching the EXACT question_id.
             2. Evaluate step-by-step. 
+               - CRITICAL GRADING RULE: First, independently determine the correct factual answer based on your expert knowledge. THEN compare your correct answer to the student's handwritten response.
                - IF the question asks for a list, explicitly count valid/invalid points first.
-               - IF the question has 'options', evaluate strictly against those choices.
+               - IF the question has 'options' (MCQ), you MUST accept the correct option letter (e.g., 'a', 'b', 'c'), the correct option text, or both. Give full marks if the student's handwriting indicates the correct choice in any recognizable format.
             3. Assign a numeric 'score_awarded' (use decimals for half marks).
-            4. Assign a 'score_string' that contains ONLY the fraction (e.g., "1.5/2"). DO NOT append any other text.
+            4. Assign a 'score_string' that contains ONLY the fraction (e.g., "1/1"). DO NOT append any other text.
             5. Provide specific feedback. CRITICAL CONSTRAINT: Feedback MUST be UNDER 15 WORDS.
             6. Provide the bounding box [ymin, xmin, ymax, xmax] of the answer region. 
                - SPATIAL RULE 1 (Anti-Segmentation): Do NOT visually separate the marginal question number from the main text. You MUST capture the handwritten question identifier inside the box. The left boundary (xmin) MUST start to the left of the question identifier.
