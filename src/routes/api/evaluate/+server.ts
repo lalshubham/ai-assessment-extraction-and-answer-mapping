@@ -40,21 +40,17 @@ export const POST: RequestHandler = async ({ request }) => {
             Here are the questions in JSON format: ${JSON.stringify(questions)}
             
             For each question:
-            1. Find the handwritten answer matching the EXACT question_id.
-            2. Evaluate step-by-step. 
-               - CRITICAL GRADING RULE: First, independently determine the correct factual answer based on your expert knowledge. THEN compare your correct answer to the student's handwritten response.
-               - IF the question asks for a list, explicitly count valid/invalid points first.
-               - IF the question has 'options' (MCQ), you MUST accept the correct option letter (e.g., 'a', 'b', 'c'), the correct option text, or both. Give full marks if the student's handwriting indicates the correct choice in any recognizable format.
-            3. Assign a numeric 'score_awarded' (use decimals for half marks).
-            4. Assign a 'score_string' that contains ONLY the fraction (e.g., "1/1"). DO NOT append any other text.
-            5. Provide specific feedback. CRITICAL CONSTRAINT: Feedback MUST be UNDER 15 WORDS.
-            6. Provide the bounding box [ymin, xmin, ymax, xmax] of the answer region. 
-               - SPATIAL RULE 1 (Anti-Segmentation): Do NOT visually separate the marginal question number from the main text. You MUST capture the handwritten question identifier inside the box. The left boundary (xmin) MUST start to the left of the question identifier.
-               - SPATIAL RULE 2 (Leftmost Diagram Labels): Find the absolute leftmost letter of any diagram label protruding into the margin. xmin MUST stretch far enough left to include this very first letter without clipping it.
-               - SPATIAL RULE 3 (Vertical Bounds): Include all introductory sentences at the top. Extend the bottom boundary (ymax) down to include all floating labels and the lowest drawn elements, stopping strictly before the next question's identifier.
-               - SPATIAL RULE 4 (Right Boundary & Red Marks): Wrap the right side to include the last word on every line. DO NOT shrink the box to avoid teacher grading marks. If a red mark falls inside your box while capturing student text, that is 100% correct.
-               - SPATIAL RULE 5 (Exclude Headers): Exclude section headers and instructional text. Box ONLY the student's answer.
-            7. ONLY set status to 'unanswered' (and omit the box) if the space is completely blank.`
+            1. Evaluate step-by-step.
+               - IF it is an MCQ, accept the option letter, option text, or both.
+            2. Assign a numeric 'score_awarded' (use decimals for half marks).
+            3. Assign 'score_string' (e.g., '1.5/2'). DO NOT append feedback into this string.
+            4. Provide 'feedback' UNDER 10 WORDS.
+            5. Provide a precise bounding box [ymin, xmin, ymax, xmax] on a 0-1000 scale.
+               - RULE 1 (Precision): Draw a tight, precise box around the student's attempt. DO NOT use arbitrary full-width coordinates like 0 and 1000.
+               - RULE 2 (Left Edge): The left edge MUST expand into the margin to perfectly enclose the handwritten question number (e.g., "1.", "11."). Treat the margin number and the main paragraph as a single connected visual block.
+               - RULE 3 (Right Edge): Wrap tightly around the rightmost edge of the student's handwriting.
+               - RULE 4 (Top & Bottom): Capture all text lines, diagrams, and labels belonging to this question. Stop immediately before the next question begins. Exclude printed section headers (e.g., "A. Choose the correct option").
+            6. ONLY set status to 'unanswered' (and omit the box) if the space is completely blank.`
 		});
 
 		const response = await fetchAPI(
@@ -63,6 +59,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				contents: parts,
 				config: {
 					maxOutputTokens: 8192,
+					temperature: 0.1,
 					responseMimeType: 'application/json',
 					responseSchema: {
 						type: Type.OBJECT,
@@ -80,20 +77,23 @@ export const POST: RequestHandler = async ({ request }) => {
 										score_awarded: { type: Type.NUMBER },
 										score_string: {
 											type: Type.STRING,
-											description: "Strictly just the fraction like '1.5/2'. No other words."
+											description: "ONLY the fraction (e.g., '1/1'). NEVER include feedback words here."
 										},
 										feedback: {
 											type: Type.STRING,
-											description: "Specific feedback, maximum 15 words."
+											description: "Specific feedback, maximum 10 words."
 										},
-										page_index: { type: Type.INTEGER },
+										page_index: {
+											type: Type.INTEGER,
+											description: "CRITICAL: 0-indexed page number (first page is 0)."
+										},
 										bounding_box: {
 											type: Type.ARRAY,
 											items: { type: Type.INTEGER },
-											description: "[ymin, xmin, ymax, xmax]. CRITICAL: xmin MUST extend far enough left to completely enclose the question number AND the first letter of any leftmost diagram labels. Do not crop the left margin."
+											description: "[ymin, xmin, ymax, xmax]. Must perfectly frame the answer, expanding left to explicitly include the marginal question number."
 										}
 									},
-									required: ['question_id', 'status']
+									required: ['question_id', 'status', 'score_string', 'page_index']
 								}
 							}
 						},
