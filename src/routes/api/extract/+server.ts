@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
             1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject (e.g., "CLASS - VIII", "SCIENCE"). Do NOT assume this; read it explicitly from the image.
             2. Extract all questions in their exact printed order. 
             3. Treat labeled sub-parts as distinct questions. 
-            4. Extract the maximum marks allocated for each question based on the text.
+            4. Extract the maximum marks allocated for each question. CRITICAL: The marks MUST be a simple standard number (e.g., 1, 2, 5, 0.5). NEVER output scientific notation, complex fractions, or floating point errors (like 1.000005).
             5. IF the question is a Multiple Choice Question (MCQ), extract the options into an array.`
         });
 

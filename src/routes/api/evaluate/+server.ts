@@ -40,19 +40,20 @@ export const POST: RequestHandler = async ({ request }) => {
             Here are the questions in JSON format: ${JSON.stringify(questions)}
             
             For each question:
-            1. Find the handwritten answer.
+            1. Find the handwritten answer matching the EXACT question_id.
             2. Evaluate step-by-step. 
                - IF the question asks for a list, explicitly count valid/invalid points first.
                - IF the question has 'options', evaluate strictly against those choices.
-            3. Assign a numeric 'score_awarded' (use decimals for half marks) and a 'score_string' (e.g., '1.5/2').
-            4. Provide specific feedback. CRITICAL CONSTRAINT: Feedback MUST be UNDER 15 WORDS to save space. Do not ramble. If marks are deducted, state exactly why briefly.
-            5. Provide the bounding box of the answer region. 
-               - SPATIAL RULE 1 (Complete Capture): Capture the ENTIRE handwritten answer, including introductory sentences.
-               - SPATIAL RULE 2 (Diagrams): For diagrams (e.g., the heart drawing), the bounding box MUST extend to the far left margin of the page to capture ALL disconnected floating labels. Do not crop the left side.
-               - SPATIAL RULE 3 (Teacher Marks): Wrap tightly around the student's handwriting. Do not artificially stretch to capture a teacher's checkmark. 
-               - SPATIAL RULE 4 (Exclude Headers): DO NOT include printed instructional text or section headers.
-               - SPATIAL RULE 5 (Short Answers): Generate a box for EVERY attempted question, even single words.
-            6. ONLY set status to 'unanswered' (and omit the box) if the space is completely blank.`
+            3. Assign a numeric 'score_awarded' (use decimals for half marks).
+            4. Assign a 'score_string' that contains ONLY the fraction (e.g., "1.5/2"). DO NOT append any other text.
+            5. Provide specific feedback. CRITICAL CONSTRAINT: Feedback MUST be UNDER 15 WORDS.
+            6. Provide the bounding box [ymin, xmin, ymax, xmax] of the answer region. 
+               - SPATIAL RULE 1 (Anti-Segmentation): Do NOT visually separate the marginal question number from the main text. You MUST capture the handwritten question identifier inside the box. The left boundary (xmin) MUST start to the left of the question identifier.
+               - SPATIAL RULE 2 (Leftmost Diagram Labels): Find the absolute leftmost letter of any diagram label protruding into the margin. xmin MUST stretch far enough left to include this very first letter without clipping it.
+               - SPATIAL RULE 3 (Vertical Bounds): Include all introductory sentences at the top. Extend the bottom boundary (ymax) down to include all floating labels and the lowest drawn elements, stopping strictly before the next question's identifier.
+               - SPATIAL RULE 4 (Right Boundary & Red Marks): Wrap the right side to include the last word on every line. DO NOT shrink the box to avoid teacher grading marks. If a red mark falls inside your box while capturing student text, that is 100% correct.
+               - SPATIAL RULE 5 (Exclude Headers): Exclude section headers and instructional text. Box ONLY the student's answer.
+            7. ONLY set status to 'unanswered' (and omit the box) if the space is completely blank.`
 		});
 
 		const response = await fetchAPI(
@@ -71,12 +72,25 @@ export const POST: RequestHandler = async ({ request }) => {
 									type: Type.OBJECT,
 									properties: {
 										question_id: { type: Type.STRING },
-										status: { type: Type.STRING },
+										status: {
+											type: Type.STRING,
+											description: "'answered' or 'unanswered'"
+										},
 										score_awarded: { type: Type.NUMBER },
-										score_string: { type: Type.STRING },
-										feedback: { type: Type.STRING },
+										score_string: {
+											type: Type.STRING,
+											description: "Strictly just the fraction like '1.5/2'. No other words."
+										},
+										feedback: {
+											type: Type.STRING,
+											description: "Specific feedback, maximum 15 words."
+										},
 										page_index: { type: Type.INTEGER },
-										bounding_box: { type: Type.ARRAY, items: { type: Type.INTEGER } }
+										bounding_box: {
+											type: Type.ARRAY,
+											items: { type: Type.INTEGER },
+											description: "[ymin, xmin, ymax, xmax]. CRITICAL: xmin MUST extend far enough left to completely enclose the question number AND the first letter of any leftmost diagram labels. Do not crop the left margin."
+										}
 									},
 									required: ['question_id', 'status']
 								}

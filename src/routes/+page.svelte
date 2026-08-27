@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { type ImageData, processFileToImages } from "$lib/utils/file";
+    import { processFileToImages } from "$lib/utils/file";
 
     type Question = {
         id: string;
@@ -17,7 +17,6 @@
         bounding_box?: [number, number, number, number];
     };
     type MetaData = { grade_level?: string; subject?: string };
-    type FileCache = { name: string; size: number; lastModified: number };
 
     let questionFile = $state<File | null>(null);
     let answerFile = $state<File | null>(null);
@@ -32,9 +31,6 @@
     let answerImages = $state<string[]>([]);
     let activeQuestionId = $state<string | null>(null);
 
-    let cachedQuestionFile = $state<FileCache | null>(null);
-    let cachedQuestionImages = $state<ImageData[]>([]);
-
     let totalMaxMarks = $derived(
         questions.reduce((sum, q) => sum + (q.marks || 0), 0),
     );
@@ -42,65 +38,45 @@
         evaluations.reduce((sum, ev) => sum + (ev.score_awarded || 0), 0),
     );
 
-    function isSameFile(file: File, cache: FileCache | null) {
-        if (!cache) return false;
-        return (
-            file.name === cache.name &&
-            file.size === cache.size &&
-            file.lastModified === cache.lastModified
-        );
-    }
-
     async function startMapping() {
         if (!questionFile || !answerFile) return;
 
         isProcessing = true;
         errorMessage = null;
+
         evaluations = [];
+        questions = [];
+        examMeta = null;
+        answerImages = [];
         activeQuestionId = null;
 
         try {
             progressStatus = "Preparing files (Parallel)...";
             const [qImages, aImages] = await Promise.all([
-                isSameFile(questionFile, cachedQuestionFile) &&
-                questions.length > 0
-                    ? Promise.resolve(cachedQuestionImages)
-                    : processFileToImages(questionFile),
+                processFileToImages(questionFile),
                 processFileToImages(answerFile),
             ]);
 
             answerImages = aImages.map((img) => img.dataUrl);
 
-            if (
-                !isSameFile(questionFile, cachedQuestionFile) ||
-                questions.length === 0
-            ) {
-                progressStatus = "Extracting questions & metadata...";
-                const qFormData = new FormData();
-                qImages.forEach((img) =>
-                    qFormData.append("images", img.blob, "page.jpg"),
+            progressStatus = "Extracting questions & metadata...";
+            const qFormData = new FormData();
+            qImages.forEach((img) =>
+                qFormData.append("images", img.blob, "page.jpg"),
+            );
+
+            const qRes = await fetch("/api/extract", {
+                method: "POST",
+                body: qFormData,
+            });
+            if (!qRes.ok)
+                throw new Error(
+                    (await qRes.json()).error || "Extraction failed",
                 );
 
-                const qRes = await fetch("/api/extract", {
-                    method: "POST",
-                    body: qFormData,
-                });
-                if (!qRes.ok)
-                    throw new Error(
-                        (await qRes.json()).error || "Extraction failed",
-                    );
-
-                const qData = await qRes.json();
-                examMeta = qData.metadata;
-                questions = qData.questions;
-
-                cachedQuestionFile = {
-                    name: questionFile.name,
-                    size: questionFile.size,
-                    lastModified: questionFile.lastModified,
-                };
-                cachedQuestionImages = qImages;
-            }
+            const qData = await qRes.json();
+            examMeta = qData.metadata;
+            questions = qData.questions;
 
             progressStatus = "Evaluating student answers...";
             const aFormData = new FormData();
