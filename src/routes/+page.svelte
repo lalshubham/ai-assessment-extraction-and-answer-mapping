@@ -155,10 +155,6 @@
 </script>
 
 <div class="flex flex-col gap-4 p-4 h-screen bg-gray-50">
-    <LoadingScreen progressStatus="testing..." />
-</div>
-
-<!-- <div class="flex flex-col gap-4 p-4 h-screen bg-gray-50">
     {#if errorMessage}
         <div class="p-4 border bg-[#fee2e2] text-[#991b1b]">
             {errorMessage}
@@ -254,4 +250,4 @@
             </div>
         {/if}
     {/if}
-</div> -->
+</div>
