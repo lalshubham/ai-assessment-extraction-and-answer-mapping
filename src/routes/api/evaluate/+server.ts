@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import type { MetaData, ContentPart } from '$lib/types';
+import type { ExamMetadata, GeminiContent } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -19,10 +19,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing required data' }, { status: 400 });
 		}
 
-		const metadata = JSON.parse(metadataStr) as MetaData;
+		const metadata = JSON.parse(metadataStr) as ExamMetadata;
 		const questions = JSON.parse(questionsStr) as Record<string, unknown>[];
 
-		const parts: ContentPart[] = [];
+		const parts: GeminiContent[] = [];
 
 		for (const file of files) {
 			const arrayBuffer = await file.arrayBuffer();
@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
             2. Assign a numeric 'score_awarded' (use decimals for half marks).
             3. Assign 'score_string' containing ONLY the fraction. DO NOT append feedback here.
             4. Provide 'feedback'.
-               - CRITICAL: You are strictly FORBIDDEN from using vague summary words.
+			   - For MCQs, mention the student's chosen answer.
                - If marks are deducted, clearly explain what was incorrect in the answer and what important information or points were missing.
             5. Provide a precise bounding box [ymin, xmin, ymax, xmax] on a 0-1000 scale.
                - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
@@ -92,7 +92,7 @@ export const POST: RequestHandler = async ({ request }) => {
 											description: "[ymin, xmin, ymax, xmax]. Push xmax safely to the right to prevent clipping trailing words."
 										}
 									},
-									required: ['question_id', 'status', 'score_string', 'page_index']
+									required: ['question_id', 'status', 'score_string', 'feedback', 'page_index']
 								}
 							}
 						},
@@ -106,9 +106,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json(parsedData);
 	}
-	catch (error: any) {
+	catch (error: unknown) {
 		console.error('Evaluation Error:', error);
-		const msg = error?.message?.includes('truncated')
+		const msg = error instanceof Error && error.message.includes('truncated')
 			? 'AI output was truncated due to length. Please try again.'
 			: 'Failed to evaluate answers.';
 		return json({ error: msg }, { status: 500 });

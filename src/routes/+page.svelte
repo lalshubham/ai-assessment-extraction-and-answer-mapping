@@ -1,5 +1,10 @@
 <script lang="ts">
-    import type { ImageData, MetaData, Question, Evaluation } from "$lib/types";
+    import type {
+        ImageData,
+        ExamMetadata,
+        Question,
+        Evaluation,
+    } from "$lib/types";
     import processFileToImages from "$lib/utils/file";
     import UploadScreen from "$lib/components/UploadScreen.svelte";
     import LoadingScreen from "$lib/components/LoadingScreen.svelte";
@@ -17,10 +22,12 @@
     let cachedAImages = $state<ImageData[]>([]);
     let answerImages = $state<string[]>([]);
 
-    let examMeta = $state<MetaData | null>(null);
+    let examMeta = $state<ExamMetadata | null>(null);
     let questions = $state<Question[]>([]);
     let evaluations = $state<Evaluation[]>([]);
     let activeQuestionId = $state<string | null>(null);
+
+    let activeTab = $state<"questions" | "answers">("questions");
 
     let totalMaxMarks = $derived(
         questions.reduce((sum, q) => sum + (q.marks || 0), 0),
@@ -147,9 +154,11 @@
     }
 </script>
 
-<div class="flex flex-col gap-4 p-4 h-screen font-sans">
+<div class="flex flex-col gap-4 p-4 h-screen font-sans bg-gray-50">
     {#if errorMessage}
-        <div class="p-4 border bg-[#fee2e2] text-[#991b1b]">{errorMessage}</div>
+        <div class="p-4 border bg-[#fee2e2] text-[#991b1b] rounded shadow-sm">
+            {errorMessage}
+        </div>
     {/if}
 
     {#if currentScreen === 1}
@@ -163,42 +172,87 @@
         <LoadingScreen {progressStatus} />
     {:else if currentScreen === 3}
         <div
-            class="flex items-center justify-between gap-4 border p-3 bg-gray-50 shadow-sm"
+            class="flex flex-col md:flex-row items-center justify-between gap-4 border p-3 bg-white shadow-sm rounded"
         >
-            <div class="font-bold text-gray-800 px-2">Assessment Complete</div>
-            <div class="flex gap-2">
+            <div
+                class="font-bold text-gray-800 px-2 w-full md:w-auto text-center"
+            >
+                Assessment Complete
+            </div>
+            <div class="flex flex-wrap justify-center gap-2 w-full md:w-auto">
                 <button
                     onclick={resetToScreen1}
-                    class="px-4 py-2 border bg-white hover:bg-gray-100 cursor-pointer text-sm font-semibold"
+                    class="px-4 py-2 border bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm font-semibold rounded transition-colors"
                 >
-                    Go Back to Upload
+                    Upload New
                 </button>
                 <button
                     onclick={() => runPipeline("re-extract")}
-                    class="px-4 py-2 border bg-blue-50 text-blue-800 hover:bg-blue-100 cursor-pointer text-sm font-semibold"
+                    class="px-4 py-2 border bg-blue-50 text-blue-800 hover:bg-blue-100 cursor-pointer text-sm font-semibold rounded transition-colors"
                 >
-                    Re-Extract Question & Evaluate
+                    Re-Extract
                 </button>
                 <button
                     onclick={() => runPipeline("re-evaluate")}
-                    class="px-4 py-2 border bg-black text-white hover:bg-gray-800 cursor-pointer text-sm font-semibold"
+                    class="px-4 py-2 border bg-black text-white hover:bg-gray-800 cursor-pointer text-sm font-semibold rounded transition-colors"
                 >
-                    Re-Evaluate Answer Only
+                    Re-Evaluate
                 </button>
             </div>
         </div>
 
         {#if questions.length > 0}
-            <div class="flex flex-1 gap-4 overflow-hidden min-h-0">
-                <QuestionPanel
-                    {examMeta}
-                    {questions}
-                    {evaluations}
-                    bind:activeQuestionId
-                    {totalScore}
-                    {totalMaxMarks}
-                />
-                <AnswerPanel {answerImages} {evaluations} {activeQuestionId} />
+            <div
+                class="flex lg:hidden w-full bg-gray-200 rounded-md p-1 shrink-0"
+            >
+                <button
+                    onclick={() => (activeTab = "questions")}
+                    class="flex-1 py-2 text-sm font-bold rounded-sm transition-colors {activeTab ===
+                    'questions'
+                        ? 'bg-white shadow text-black'
+                        : 'text-gray-600 hover:text-gray-800'}"
+                >
+                    Questions
+                </button>
+                <button
+                    onclick={() => (activeTab = "answers")}
+                    class="flex-1 py-2 text-sm font-bold rounded-sm transition-colors {activeTab ===
+                    'answers'
+                        ? 'bg-white shadow text-black'
+                        : 'text-gray-600 hover:text-gray-800'}"
+                >
+                    Answer Sheets
+                </button>
+            </div>
+
+            <div
+                class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0 pb-4"
+            >
+                <div
+                    class="h-full overflow-hidden {activeTab === 'questions'
+                        ? 'block'
+                        : 'hidden'} lg:block"
+                >
+                    <QuestionPanel
+                        {examMeta}
+                        {questions}
+                        {evaluations}
+                        bind:activeQuestionId
+                        {totalScore}
+                        {totalMaxMarks}
+                    />
+                </div>
+                <div
+                    class="h-full overflow-hidden {activeTab === 'answers'
+                        ? 'block'
+                        : 'hidden'} lg:block"
+                >
+                    <AnswerPanel
+                        {answerImages}
+                        {evaluations}
+                        {activeQuestionId}
+                    />
+                </div>
             </div>
         {/if}
     {/if}

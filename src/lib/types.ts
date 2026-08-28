@@ -3,12 +3,12 @@ export type ImageData = {
     dataUrl: string
 };
 
-export type MetaData = {
+export type ExamMetadata = {
     grade_level?: string;
     subject?: string;
 };
 
-export type ContentPart = {
+export type GeminiContent = {
     text: string;
 } | {
     inlineData: {

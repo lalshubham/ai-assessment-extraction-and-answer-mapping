@@ -6,46 +6,136 @@
         evaluations: Evaluation[];
         activeQuestionId: string | null;
     }>();
+
+    let scrollContainer = $state<HTMLElement | null>(null);
+    let zoomLevel = $state(100);
+    let currentPage = $state(1);
+    let totalPages = $derived(answerImages.length);
+
+    function changeZoom(delta: number) {
+        zoomLevel = Math.max(25, Math.min(300, zoomLevel + delta));
+    }
+
+    function changePage(delta: number) {
+        const newPage = currentPage + delta;
+        if (newPage >= 1 && newPage <= totalPages) {
+            currentPage = newPage;
+            document
+                .getElementById(`page-${newPage}`)
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+    }
+
+    function handleScroll() {
+        if (!scrollContainer) return;
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const viewCenter = containerRect.top + containerRect.height / 2;
+
+        let closest = 1,
+            minDiff = Infinity;
+
+        scrollContainer
+            .querySelectorAll<HTMLElement>(".answer-page")
+            .forEach((page) => {
+                const rect = page.getBoundingClientRect();
+                const pageCenter = rect.top + rect.height / 2;
+                const diff = Math.abs(pageCenter - viewCenter);
+
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closest = parseInt(page.dataset.page || "1");
+                }
+            });
+
+        if (currentPage !== closest) currentPage = closest;
+    }
 </script>
 
-<div class="flex flex-col gap-4 w-2/3 overflow-y-auto border p-4 bg-[#f9fafb]">
-    {#each answerImages as imgUrl, index (index)}
-        <div class="relative border w-full bg-white">
-            <img src={imgUrl} alt="Page {index + 1}" class="w-full block" />
-            {#each evaluations as ev (ev.question_id)}
-                {#if (ev.page_index ?? 0) === index && ev.bounding_box && ev.bounding_box.length === 4 && ev.status !== "unanswered"}
-                    <div
-                        class="absolute border-2"
-                        style="
-                            border-color: {activeQuestionId === ev.question_id
-                            ? '#22c55e'
-                            : 'rgba(96, 165, 250, 0.5)'};
-                            background-color: {activeQuestionId ===
-                        ev.question_id
-                            ? 'rgba(34, 197, 94, 0.2)'
-                            : 'rgba(96, 165, 250, 0.1)'};
-                            z-index: {activeQuestionId === ev.question_id
-                            ? 20
-                            : 10};
-                            top: {ev.bounding_box[0] / 10}%; 
-                            left: {ev.bounding_box[1] / 10}%; 
-                            width: {(ev.bounding_box[3] - ev.bounding_box[1]) /
-                            10}%; 
-                            height: {(ev.bounding_box[2] - ev.bounding_box[0]) /
-                            10}%;
-                        "
-                    >
-                        {#if activeQuestionId === ev.question_id}
-                            <span
-                                class="absolute shadow"
-                                style="top: -24px; left: -2px; background: #22c55e; color: white; padding: 2px 4px; font-size: 12px; font-weight: bold;"
+<div
+    class="relative flex flex-col w-full h-full border bg-gray-100 rounded overflow-hidden"
+>
+    <div
+        class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-[#2d2d2d] text-white px-5 py-2 rounded-xl shadow-lg border border-gray-600/50 text-sm font-semibold select-none whitespace-nowrap"
+    >
+        <div class="flex items-center gap-2">
+            <button
+                onclick={() => changeZoom(-25)}
+                class="hover:text-gray-300 px-2 text-xl leading-none"
+                >&minus;</button
+            >
+            <span class="w-10 text-center">{zoomLevel}%</span>
+            <button
+                onclick={() => changeZoom(25)}
+                class="hover:text-gray-300 px-2 text-xl leading-none">+</button
+            >
+        </div>
+        <div class="w-px h-5 bg-gray-500"></div>
+        <div class="flex items-center gap-2">
+            <button
+                onclick={() => changePage(-1)}
+                disabled={currentPage === 1}
+                class="hover:text-gray-300 disabled:opacity-30 px-2 text-lg leading-none"
+                >&lt;</button
+            >
+            <span class="text-center">Page {currentPage} of {totalPages}</span>
+            <button
+                onclick={() => changePage(1)}
+                disabled={currentPage === totalPages}
+                class="hover:text-gray-300 disabled:opacity-30 px-2 text-lg leading-none"
+                >&gt;</button
+            >
+        </div>
+    </div>
+
+    <div
+        bind:this={scrollContainer}
+        onscroll={handleScroll}
+        class="flex-1 overflow-auto p-4 md:p-8"
+    >
+        <div
+            class="flex flex-col gap-6 mx-auto transition-all duration-200 ease-out origin-top"
+            style="width: {zoomLevel}%;"
+        >
+            {#each answerImages as imgUrl, index (index)}
+                <div
+                    id="page-{index + 1}"
+                    data-page={index + 1}
+                    class="answer-page relative shadow-md w-full bg-white mx-auto border border-gray-200"
+                >
+                    <img
+                        src={imgUrl}
+                        alt="Page {index + 1}"
+                        class="w-full block"
+                    />
+
+                    {#each evaluations as ev (ev.question_id)}
+                        {#if (ev.page_index ?? 0) === index && ev.bounding_box && ev.bounding_box.length === 4 && ev.status !== "unanswered"}
+                            <div
+                                id="box-{ev.question_id}"
+                                class="absolute border-2 transition-colors duration-200 {activeQuestionId ===
+                                ev.question_id
+                                    ? 'border-green-500 bg-green-500/20 z-20 shadow-[0_0_15px_rgba(34,197,94,0.3)]'
+                                    : 'border-blue-400/50 bg-blue-400/10 z-10 hover:bg-blue-400/20'}"
+                                style="top: {ev.bounding_box[0] /
+                                    10}%; left: {ev.bounding_box[1] /
+                                    10}%; width: {(ev.bounding_box[3] -
+                                    ev.bounding_box[1]) /
+                                    10}%; height: {(ev.bounding_box[2] -
+                                    ev.bounding_box[0]) /
+                                    10}%;"
                             >
-                                Q{ev.question_id}
-                            </span>
+                                {#if activeQuestionId === ev.question_id}
+                                    <span
+                                        class="absolute -top-[24px] -left-[2px] bg-green-500 text-white px-2 py-0.5 text-xs font-bold shadow rounded-t"
+                                    >
+                                        Q{ev.question_id}
+                                    </span>
+                                {/if}
+                            </div>
                         {/if}
-                    </div>
-                {/if}
+                    {/each}
+                </div>
             {/each}
         </div>
-    {/each}
+    </div>
 </div>

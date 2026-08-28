@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import type { ContentPart } from '$lib/types';
+import type { GeminiContent } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -16,7 +16,7 @@ export const POST: RequestHandler = async ({ request }) => {
             return json({ error: 'Invalid input payload' }, { status: 400 });
         }
 
-        const parts: ContentPart[] = [];
+        const parts: GeminiContent[] = [];
 
         for (const file of files) {
             const arrayBuffer = await file.arrayBuffer();
@@ -73,9 +73,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
         return json(parsedData);
     }
-    catch (error: any) {
+    catch (error: unknown) {
         console.error('Extraction Error:', error);
-        const msg = error?.message?.includes('truncated')
+        const msg = error instanceof Error && error.message.includes('truncated')
             ? 'AI output was truncated during extraction.'
             : 'Failed to extract questions.';
         return json({ error: msg }, { status: 500 });

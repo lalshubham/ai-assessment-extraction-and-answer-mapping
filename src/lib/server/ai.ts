@@ -1,5 +1,5 @@
 export default async function fetchAndParseAI<T>(
-    apiCall: () => Promise<any>,
+    apiCall: () => Promise<{ text?: string }>,
     retries = 2,
     apiName = 'API'
 ): Promise<T> {
