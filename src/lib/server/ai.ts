@@ -1,11 +1,27 @@
-export async function fetchAPI<T>(
-    apiCall: () => Promise<T>,
+export default async function fetchAndParseAI<T>(
+    apiCall: () => Promise<any>,
     retries = 2,
     apiName = 'API'
 ): Promise<T> {
     for (let i = 0; i <= retries; i++) {
         try {
-            return await apiCall();
+            const response = await apiCall();
+            const text = response.text || '{}';
+
+            try {
+                return JSON.parse(text) as T;
+            }
+            catch {
+                const cleaned = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+                try {
+                    return JSON.parse(cleaned) as T;
+                }
+                catch (error) {
+                    const match = cleaned.match(/\{[\s\S]*\}/);
+                    if (match) return JSON.parse(match[0]) as T;
+                    throw new Error(`[${apiName}] AI output completely truncated.`, { cause: error });
+                }
+            }
         }
         catch (error: unknown) {
             const checkNetworkError = (err: unknown): boolean => {
@@ -32,21 +48,4 @@ export async function fetchAPI<T>(
         }
     }
     throw new Error(`[${apiName}] Failed after ${retries} retries`);
-}
-
-export function parseResponse(text: string) {
-    try {
-        return JSON.parse(text);
-    }
-    catch {
-        const cleaned = text.replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-        try {
-            return JSON.parse(cleaned);
-        }
-        catch (err) {
-            const match = cleaned.match(/\{[\s\S]*\}/);
-            if (match) return JSON.parse(match[0]);
-            throw new Error("AI output completely truncated.", { cause: err });
-        }
-    }
 }

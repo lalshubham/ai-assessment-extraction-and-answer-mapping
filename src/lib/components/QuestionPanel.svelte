@@ -1,25 +1,5 @@
 <script lang="ts">
-    type Question = {
-        id: string;
-        text: string;
-        marks?: number;
-        options?: string[];
-    };
-
-    type Evaluation = {
-        question_id: string;
-        status: "answered" | "unanswered";
-        score_awarded?: number;
-        score_string?: string;
-        feedback?: string;
-        page_index?: number;
-        bounding_box?: [number, number, number, number];
-    };
-
-    type MetaData = {
-        grade_level?: string;
-        subject?: string;
-    };
+    import type { MetaData, Question, Evaluation } from "$lib/types";
 
     let {
         examMeta,

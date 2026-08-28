@@ -3,8 +3,8 @@
 ## Highlights
 
 Upload these files:
-1. A **question paper** (PDF or image)
-2. One **handwritten answer sheet** (PDF or image)
+1. Question paper (PDF or image)
+2. Handwritten answer sheet (PDF or image)
 
 The application would extract the questions from the paper, evaluate the answers, and display them side by side.
 

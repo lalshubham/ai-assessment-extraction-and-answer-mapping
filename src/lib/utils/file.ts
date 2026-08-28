@@ -1,14 +1,10 @@
 import * as pdfjsLib from "pdfjs-dist";
 import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
+import type { ImageData } from "$lib/types";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-export type ImageData = {
-    blob: Blob;
-    dataUrl: string
-};
-
-export async function processFileToImages(file: File): Promise<ImageData[]> {
+export default async function processFileToImages(file: File): Promise<ImageData[]> {
     const JPEG_QUALITY = 0.85;
 
     if (file.type.startsWith("image/")) {

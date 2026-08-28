@@ -2,16 +2,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import { fetchAPI, parseResponse } from '$lib/server/fetch';
-
-type ContentPart = {
-    text: string
-} | {
-    inlineData: {
-        data: string;
-        mimeType: string
-    }
-};
+import type { ContentPart } from '$lib/types';
+import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
@@ -43,7 +35,7 @@ export const POST: RequestHandler = async ({ request }) => {
             5. IF the question is a Multiple Choice Question (MCQ), extract the options into an array.`
         });
 
-        const response = await fetchAPI(
+        const parsedData = await fetchAndParseAI<Record<string, unknown>>(
             () => ai.models.generateContent({
                 model: 'gemini-3.5-flash-lite',
                 contents: parts,
@@ -55,35 +47,17 @@ export const POST: RequestHandler = async ({ request }) => {
                         properties: {
                             metadata: {
                                 type: Type.OBJECT,
-                                properties: {
-                                    grade_level: {
-                                        type: Type.STRING
-                                    },
-                                    subject: {
-                                        type: Type.STRING
-                                    }
-                                }
+                                properties: { grade_level: { type: Type.STRING }, subject: { type: Type.STRING } }
                             },
                             questions: {
                                 type: Type.ARRAY,
                                 items: {
                                     type: Type.OBJECT,
                                     properties: {
-                                        id: {
-                                            type: Type.STRING
-                                        },
-                                        text: {
-                                            type: Type.STRING
-                                        },
-                                        marks: {
-                                            type: Type.NUMBER
-                                        },
-                                        options: {
-                                            type: Type.ARRAY,
-                                            items: {
-                                                type: Type.STRING
-                                            }
-                                        }
+                                        id: { type: Type.STRING },
+                                        text: { type: Type.STRING },
+                                        marks: { type: Type.NUMBER },
+                                        options: { type: Type.ARRAY, items: { type: Type.STRING } }
                                     },
                                     required: ['id', 'text']
                                 }
@@ -97,17 +71,13 @@ export const POST: RequestHandler = async ({ request }) => {
             'Extraction API'
         );
 
-        try {
-            const parsedData = parseResponse(response.text || '{}') as Record<string, unknown>;
-            return json(parsedData);
-        }
-        catch (parseError) {
-            console.error("JSON Parse Error:", parseError);
-            return json({ error: 'AI output was truncated during extraction.' }, { status: 500 });
-        }
+        return json(parsedData);
     }
-    catch (error: unknown) {
+    catch (error: any) {
         console.error('Extraction Error:', error);
-        return json({ error: 'Failed to extract questions.' }, { status: 500 });
+        const msg = error?.message?.includes('truncated')
+            ? 'AI output was truncated during extraction.'
+            : 'Failed to extract questions.';
+        return json({ error: msg }, { status: 500 });
     }
 };

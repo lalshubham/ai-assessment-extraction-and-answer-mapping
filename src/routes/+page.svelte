@@ -1,31 +1,10 @@
 <script lang="ts">
-    import { type ImageData, processFileToImages } from "$lib/utils/file";
+    import type { ImageData, MetaData, Question, Evaluation } from "$lib/types";
+    import processFileToImages from "$lib/utils/file";
     import UploadScreen from "$lib/components/UploadScreen.svelte";
     import LoadingScreen from "$lib/components/LoadingScreen.svelte";
     import QuestionPanel from "$lib/components/QuestionPanel.svelte";
     import AnswerPanel from "$lib/components/AnswerPanel.svelte";
-
-    type Question = {
-        id: string;
-        text: string;
-        marks?: number;
-        options?: string[];
-    };
-
-    type Evaluation = {
-        question_id: string;
-        status: "answered" | "unanswered";
-        score_awarded?: number;
-        score_string?: string;
-        feedback?: string;
-        page_index?: number;
-        bounding_box?: [number, number, number, number];
-    };
-
-    type MetaData = {
-        grade_level?: string;
-        subject?: string;
-    };
 
     let currentScreen = $state<1 | 2 | 3>(1);
     let progressStatus = $state<string | null>(null);

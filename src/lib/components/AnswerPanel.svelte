@@ -1,13 +1,5 @@
 <script lang="ts">
-    type Evaluation = {
-        question_id: string;
-        status: "answered" | "unanswered";
-        score_awarded?: number;
-        score_string?: string;
-        feedback?: string;
-        page_index?: number;
-        bounding_box?: [number, number, number, number];
-    };
+    import type { Evaluation } from "$lib/types";
 
     let { answerImages, evaluations, activeQuestionId } = $props<{
         answerImages: string[];
