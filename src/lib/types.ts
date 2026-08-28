@@ -26,7 +26,7 @@ export type Question = {
 
 export type Evaluation = {
     question_id: string;
-    status: "answered" | "unanswered";
+    status: 'answered' | 'unanswered';
     score_awarded?: number;
     score_string?: string;
     feedback?: string;

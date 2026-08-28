@@ -30,15 +30,13 @@
     class="flex flex-col gap-2 w-full h-full overflow-y-auto border p-2 bg-white"
 >
     {#if examMeta}
-        <div class="bg-gray-100 p-2 flex flex-col gap-1 border-b mb-2 rounded">
-            <div class="text-sm text-gray-700 font-bold text-center">
-                {examMeta.grade_level || "Unknown Class"} - {examMeta.subject ||
-                    "Unknown Subject"}
+        <div class="flex items-center justify-between gap-1">
+            <div class="text-center">
+                {examMeta.grade_level || ""}
+                {examMeta.subject || ""}
             </div>
             {#if evaluations.length > 0}
-                <div
-                    class="text-lg text-black font-extrabold text-center bg-green-200 py-1 rounded shadow-sm"
-                >
+                <div class="text-green-600 text-center">
                     Total Score: {totalScore} / {totalMaxMarks}
                 </div>
             {/if}
@@ -52,24 +50,22 @@
 
         <button
             type="button"
-            class="flex flex-col gap-2 p-3 border rounded cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-black w-full transition-colors duration-200 {activeQuestionId ===
+            class="flex flex-col gap-2 p-3 border cursor-pointer text-left w-full duration-200 {activeQuestionId ===
             q.id
-                ? 'bg-gray-50 border-black shadow-sm'
+                ? 'bg-gray-100 border-black'
                 : 'bg-transparent border-gray-200 hover:bg-gray-50'}"
             onclick={() => toggleQuestion(q.id)}
         >
             <div class="flex justify-between items-center w-full">
-                <strong class="text-lg">{q.id}</strong>
+                <strong>Question {q.id}</strong>
                 {#if ev}
                     {#if ev.status === "unanswered"}
-                        <span
-                            class="text-red-600 border border-red-600 bg-red-50 px-2 py-0.5 text-xs font-bold rounded"
-                        >
+                        <span class="text-red-600 text-xs">
                             Not Attempted
                         </span>
                     {:else}
                         <span
-                            class="font-bold text-sm {ev.score_awarded ===
+                            class="text-sm {ev.score_awarded ===
                             q.marks
                                 ? 'text-green-600'
                                 : 'text-orange-500'}"
@@ -79,24 +75,17 @@
                     {/if}
                 {/if}
             </div>
-            <p class="text-sm text-gray-800 leading-relaxed">{q.text}</p>
+            <p class="text-sm leading-relaxed">{q.text}</p>
             {#if q.options && q.options.length > 0}
-                <div
-                    class="text-xs text-gray-600 pl-3 border-l-2 border-gray-300"
-                >
+                <div class="text-sm border-gray-300">
                     {#each q.options as opt (opt)}
                         <div class="py-0.5">{opt}</div>
                     {/each}
                 </div>
             {/if}
-            <span class="text-xs text-gray-400 font-semibold mt-1">
-                Max Marks: {q.marks || "?"}
-            </span>
             {#if activeQuestionId === q.id && ev?.feedback}
-                <div
-                    class="p-2 border rounded mt-2 bg-orange-50 border-orange-300 text-sm text-orange-900 w-full shadow-inner"
-                >
-                    <strong class="text-orange-800">Feedback:</strong>
+                <div class="text-sm w-full">
+                    <strong>Feedback:</strong>
                     {ev.feedback}
                 </div>
             {/if}

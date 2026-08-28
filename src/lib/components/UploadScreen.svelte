@@ -9,10 +9,8 @@
 
 <div class="flex flex-col items-center justify-center flex-1">
     <div
-        class="flex flex-col gap-6 border p-8 shadow-sm bg-white rounded max-w-md w-full"
+        class="flex flex-col gap-6 border p-6 bg-white max-w-md w-full"
     >
-        <h1 class="text-xl font-bold text-center">AI Assessment Mapper</h1>
-
         <label
             class="flex flex-col border p-3 cursor-pointer bg-gray-50 hover:bg-gray-100"
         >
@@ -40,7 +38,7 @@
         <button
             disabled={!questionFile || !answerFile}
             onclick={onStart}
-            class="p-3 mt-2 border bg-black text-white font-bold cursor-pointer disabled:opacity-50"
+            class="p-3 border bg-black text-white cursor-pointer disabled:opacity-50"
         >
             Start Mapping
         </button>

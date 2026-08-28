@@ -38,14 +38,14 @@ export const POST: RequestHandler = async ({ request }) => {
             
             For each question:
             1. Evaluate step-by-step.
-               - Formulate the strict, standard academic answer for the provided grade level. Do not penalize for missing advanced or edge-case facts outside the standard curriculum scope.
-               - If the student uses vague terminology instead of exact scientific or academic terms, deduct marks appropriately for lack of precision.
-               - For MCQs, accept the option letter, option text, or both.
+               - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words the student did not write.
+               - MCQ RULE: If options are provided, the correct answer is STRICTLY limited to one of those exact options. Choose the best fit among the provided options ONLY. Do NOT invent or suggest external correct answers that are not present in the given option list.
+               - NON-MCQ RULE: Formulate the strict, standard academic answer for the provided grade level. Deduct marks appropriately for vague or non-scientific terminology instead of exact curriculum terms. Do not penalize for missing advanced edge-case facts outside the standard curriculum.
             2. Assign a numeric 'score_awarded' (use decimals for half marks).
-            3. Assign 'score_string' containing ONLY the fraction. DO NOT append feedback here.
+            3. Assign 'score_string' containing ONLY the fraction. The denominator MUST be the exact 'marks' value provided for this specific question in the JSON.
             4. Provide 'feedback'.
-			   - For MCQs, mention the student's chosen answer.
-               - If marks are deducted, clearly explain what was incorrect in the answer and what important information or points were missing.
+               - MCQ RULE: Mention the student's chosen answer.
+               - NON-MCQ RULE: Clearly explain what was incorrect in the answer and what important information or points were missing.
             5. Provide a precise bounding box [ymin, xmin, ymax, xmax] on a 0-1000 scale.
                - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
                - RULE 2 (Right Edge): Scan every line of the student's answer. Push xmax past the absolute furthest word on the right so no trailing letters are cut off. Over-estimate slightly to be safe.
@@ -76,20 +76,20 @@ export const POST: RequestHandler = async ({ request }) => {
 										score_awarded: { type: Type.NUMBER },
 										score_string: {
 											type: Type.STRING,
-											description: "ONLY the fraction. NEVER include feedback words here."
+											description: 'ONLY the fraction (awarded/max_marks).'
 										},
 										feedback: {
 											type: Type.STRING,
-											description: "Mention incorrect and missing data in the answer."
+											description: 'Mention incorrect and missing data based exactly on what was written.'
 										},
 										page_index: {
 											type: Type.INTEGER,
-											description: "CRITICAL: 0-indexed page number (first page is 0)."
+											description: 'CRITICAL: 0-indexed page number (first page is 0).'
 										},
 										bounding_box: {
 											type: Type.ARRAY,
 											items: { type: Type.INTEGER },
-											description: "[ymin, xmin, ymax, xmax]. Push xmax safely to the right to prevent clipping trailing words."
+											description: '[ymin, xmin, ymax, xmax]. Push xmax safely to the right to prevent clipping trailing words.'
 										}
 									},
 									required: ['question_id', 'status', 'score_string', 'feedback', 'page_index']

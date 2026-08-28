@@ -52,45 +52,51 @@
 </script>
 
 <div
-    class="relative flex flex-col w-full h-full border bg-gray-100 rounded overflow-hidden"
+    class="relative flex flex-col w-full h-full border bg-gray-100 overflow-hidden"
 >
     <div
-        class="absolute top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 bg-[#2d2d2d] text-white px-5 py-2 rounded-xl shadow-lg border border-gray-600/50 text-sm font-semibold select-none whitespace-nowrap"
+        class="flex items-center justify-between gap-4 bg-[#2d2d2d] text-white p-2 border border-gray-600/50 text-sm"
     >
-        <div class="flex items-center gap-2">
+        <div class="flex items-center">
             <button
                 onclick={() => changeZoom(-25)}
-                class="hover:text-gray-300 px-2 text-xl leading-none"
-                >&minus;</button
+                disabled={zoomLevel === 25}
+                class="disabled:opacity-30 px-2 text-xl"
             >
+                &minus;
+            </button>
             <span class="w-10 text-center">{zoomLevel}%</span>
             <button
                 onclick={() => changeZoom(25)}
-                class="hover:text-gray-300 px-2 text-xl leading-none">+</button
+                disabled={zoomLevel === 300}
+                class="disabled:opacity-30 px-2 text-xl"
             >
+                &plus;
+            </button>
         </div>
-        <div class="w-px h-5 bg-gray-500"></div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center">
             <button
                 onclick={() => changePage(-1)}
                 disabled={currentPage === 1}
-                class="hover:text-gray-300 disabled:opacity-30 px-2 text-lg leading-none"
-                >&lt;</button
+                class="disabled:opacity-30 px-2 text-xl"
             >
+                &lt;
+            </button>
             <span class="text-center">Page {currentPage} of {totalPages}</span>
             <button
                 onclick={() => changePage(1)}
                 disabled={currentPage === totalPages}
-                class="hover:text-gray-300 disabled:opacity-30 px-2 text-lg leading-none"
-                >&gt;</button
+                class="disabled:opacity-30 px-2 text-xl"
             >
+                &gt;
+            </button>
         </div>
     </div>
 
     <div
         bind:this={scrollContainer}
         onscroll={handleScroll}
-        class="flex-1 overflow-auto p-4 md:p-8"
+        class="flex-1 overflow-auto"
     >
         <div
             class="flex flex-col gap-6 mx-auto transition-all duration-200 ease-out origin-top"
@@ -100,7 +106,7 @@
                 <div
                     id="page-{index + 1}"
                     data-page={index + 1}
-                    class="answer-page relative shadow-md w-full bg-white mx-auto border border-gray-200"
+                    class="answer-page relative w-full bg-white mx-auto border border-gray-200"
                 >
                     <img
                         src={imgUrl}
@@ -126,7 +132,7 @@
                             >
                                 {#if activeQuestionId === ev.question_id}
                                     <span
-                                        class="absolute -top-[24px] -left-[2px] bg-green-500 text-white px-2 py-0.5 text-xs font-bold shadow rounded-t"
+                                        class="absolute -top-[22px] -left-[2px] bg-green-500 text-white px-2 py-0.5 text-xs"
                                     >
                                         Q{ev.question_id}
                                     </span>

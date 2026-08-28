@@ -154,9 +154,9 @@
     }
 </script>
 
-<div class="flex flex-col gap-4 p-4 h-screen font-sans bg-gray-50">
+<div class="flex flex-col gap-4 p-4 h-screen bg-gray-50">
     {#if errorMessage}
-        <div class="p-4 border bg-[#fee2e2] text-[#991b1b] rounded shadow-sm">
+        <div class="p-4 border bg-[#fee2e2] text-[#991b1b]">
             {errorMessage}
         </div>
     {/if}
@@ -172,29 +172,27 @@
         <LoadingScreen {progressStatus} />
     {:else if currentScreen === 3}
         <div
-            class="flex flex-col md:flex-row items-center justify-between gap-4 border p-3 bg-white shadow-sm rounded"
+            class="flex flex-col md:flex-row items-center justify-between gap-4 border p-3 bg-white"
         >
-            <div
-                class="font-bold text-gray-800 px-2 w-full md:w-auto text-center"
-            >
+            <div class="text-gray-800 px-2 w-full md:w-auto text-center">
                 Assessment Complete
             </div>
             <div class="flex flex-wrap justify-center gap-2 w-full md:w-auto">
                 <button
                     onclick={resetToScreen1}
-                    class="px-4 py-2 border bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm font-semibold rounded transition-colors"
+                    class="px-4 py-2 border bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm"
                 >
                     Upload New
                 </button>
                 <button
                     onclick={() => runPipeline("re-extract")}
-                    class="px-4 py-2 border bg-blue-50 text-blue-800 hover:bg-blue-100 cursor-pointer text-sm font-semibold rounded transition-colors"
+                    class="px-4 py-2 border bg-blue-50 text-blue-800 hover:bg-blue-100 cursor-pointer text-sm"
                 >
                     Re-Extract
                 </button>
                 <button
                     onclick={() => runPipeline("re-evaluate")}
-                    class="px-4 py-2 border bg-black text-white hover:bg-gray-800 cursor-pointer text-sm font-semibold rounded transition-colors"
+                    class="px-4 py-2 border bg-black text-white hover:bg-gray-800 cursor-pointer text-sm"
                 >
                     Re-Evaluate
                 </button>
@@ -202,36 +200,32 @@
         </div>
 
         {#if questions.length > 0}
-            <div
-                class="flex lg:hidden w-full bg-gray-200 rounded-md p-1 shrink-0"
-            >
+            <div class="flex md:hidden w-full p-1 border">
                 <button
                     onclick={() => (activeTab = "questions")}
-                    class="flex-1 py-2 text-sm font-bold rounded-sm transition-colors {activeTab ===
-                    'questions'
-                        ? 'bg-white shadow text-black'
-                        : 'text-gray-600 hover:text-gray-800'}"
+                    class="flex-1 py-2 text-sm {activeTab === 'questions'
+                        ? 'bg-black text-white'
+                        : ''}"
                 >
                     Questions
                 </button>
                 <button
                     onclick={() => (activeTab = "answers")}
-                    class="flex-1 py-2 text-sm font-bold rounded-sm transition-colors {activeTab ===
-                    'answers'
-                        ? 'bg-white shadow text-black'
-                        : 'text-gray-600 hover:text-gray-800'}"
+                    class="flex-1 py-2 text-sm {activeTab === 'answers'
+                        ? 'bg-black text-white'
+                        : ''}"
                 >
                     Answer Sheets
                 </button>
             </div>
 
             <div
-                class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0 pb-4"
+                class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0"
             >
                 <div
                     class="h-full overflow-hidden {activeTab === 'questions'
                         ? 'block'
-                        : 'hidden'} lg:block"
+                        : 'hidden'} md:block"
                 >
                     <QuestionPanel
                         {examMeta}
@@ -245,7 +239,7 @@
                 <div
                     class="h-full overflow-hidden {activeTab === 'answers'
                         ? 'block'
-                        : 'hidden'} lg:block"
+                        : 'hidden'} md:block"
                 >
                     <AnswerPanel
                         {answerImages}

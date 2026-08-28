@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
         parts.push({
             text: `Analyze this QUESTION PAPER image carefully.
-            1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject. Do NOT assume this; read it explicitly from the image.
+            1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject. Do NOT assume this; read it explicitly from the image. If not found, then just keep emoty string.
             2. Extract all questions in their exact printed order.
             3. Treat labeled sub-parts as distinct questions.
             4. Extract the maximum marks allocated for each question. CRITICAL: The marks MUST be a simple standard number (e.g., 1, 2, 5, 0.5). NEVER output scientific notation, complex fractions, or floating point errors (like 1.000005).
