@@ -28,11 +28,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
         parts.push({
             text: `Analyze this QUESTION PAPER image carefully.
-            1. Look at the very top heading of this specific paper to extract the exact class/grade level and subject. Do NOT assume this; read it explicitly from the image. If not found, then just keep emoty string.
+            1. Extract class/grade level and subject. If not found, keep empty string.
             2. Extract all questions in their exact printed order.
             3. Treat labeled sub-parts as distinct questions.
-            4. Extract the maximum marks allocated for each question. CRITICAL: The marks MUST be a simple standard number (e.g., 1, 2, 5, 0.5). NEVER output scientific notation, complex fractions, or floating point errors (like 1.000005).
-            5. IF the question is a Multiple Choice Question (MCQ), extract the options into an array.`
+            4. For the 'marks' field, extract a simple number (e.g., 1, 2, 5).
+            5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'section_raw_header' field for EVERY question that belongs to that section. If there is no multiplier, leave it empty.
+            6. Extract MCQ options into an array if present.`
         });
 
         const parsedData = await fetchAndParseAI<Record<string, unknown>>(
@@ -57,9 +58,13 @@ export const POST: RequestHandler = async ({ request }) => {
                                         id: { type: Type.STRING },
                                         text: { type: Type.STRING },
                                         marks: { type: Type.NUMBER },
-                                        options: { type: Type.ARRAY, items: { type: Type.STRING } }
+                                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+                                        section_raw_header: {
+                                            type: Type.STRING,
+                                            description: "The exact marks equation from the section header (e.g., '5 x 2')."
+                                        }
                                     },
-                                    required: ['id', 'text']
+                                    required: ['id', 'text', 'marks']
                                 }
                             }
                         },
@@ -70,6 +75,46 @@ export const POST: RequestHandler = async ({ request }) => {
             2,
             'Extraction API'
         );
+
+        if (parsedData?.questions && Array.isArray(parsedData.questions)) {
+            const groups: Record<string, any[]> = {};
+            let currentHeader = "default";
+
+            for (const q of parsedData.questions) {
+                if (q.section_raw_header && q.section_raw_header.trim() !== "") {
+                    currentHeader = q.section_raw_header.replace(/\s+/g, '').toLowerCase();
+                }
+                if (!groups[currentHeader]) groups[currentHeader] = [];
+                groups[currentHeader].push(q);
+            }
+
+            for (const [header, block] of Object.entries(groups)) {
+                if (header === "default" || !header) continue;
+
+                const nums = (header.match(/\d+(\.\d+)?/g) || []).map(Number);
+                if (nums.length >= 2) {
+                    const [n1, n2] = nums;
+                    const actualQuestionCount = block.length;
+                    let trueMarks: number | null = null;
+
+                    if (n1 === actualQuestionCount && n2 !== actualQuestionCount) {
+                        trueMarks = n2;
+                    }
+                    else if (n2 === actualQuestionCount && n1 !== actualQuestionCount) {
+                        trueMarks = n1;
+                    }
+                    else if (n1 === actualQuestionCount && n2 === actualQuestionCount) {
+                        trueMarks = n1;
+                    }
+
+                    if (trueMarks !== null) {
+                        for (const q of block) {
+                            q.marks = trueMarks;
+                        }
+                    }
+                }
+            }
+        }
 
         return json(parsedData);
     }

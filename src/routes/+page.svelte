@@ -73,7 +73,7 @@
         try {
             if (mode === "full" || cachedAImages.length === 0) {
                 progressStatus =
-                    "Converting documents into secure image streams...";
+                    "Converting documents into secure image streams";
                 const [qImages, aImages] = await Promise.all([
                     processFileToImages(questionFile!),
                     processFileToImages(answerFile!),
@@ -85,7 +85,7 @@
 
             if (mode === "full" || mode === "re-extract") {
                 progressStatus =
-                    "Analyzing question paper structure and extracting text...";
+                    "Analyzing question paper structure and extracting text";
                 const qFormData = new FormData();
                 cachedQImages.forEach((img) =>
                     qFormData.append("images", img.blob, "page.jpg"),
@@ -106,7 +106,7 @@
             }
 
             progressStatus =
-                "AI is evaluating student answers against the paper...";
+                "AI is evaluating student answers against the paper";
             const aFormData = new FormData();
             aFormData.append("metadata", JSON.stringify(examMeta));
             aFormData.append("questions", JSON.stringify(questions));
@@ -125,7 +125,7 @@
 
             evaluations = (await aRes.json()).evaluations;
 
-            progressStatus = "Finalizing assessment reports...";
+            progressStatus = "Finalizing assessment reports";
             setTimeout(() => {
                 currentScreen = 3;
                 progressStatus = null;
@@ -155,6 +155,10 @@
 </script>
 
 <div class="flex flex-col gap-4 p-4 h-screen bg-gray-50">
+    <LoadingScreen progressStatus="testing..." />
+</div>
+
+<!-- <div class="flex flex-col gap-4 p-4 h-screen bg-gray-50">
     {#if errorMessage}
         <div class="p-4 border bg-[#fee2e2] text-[#991b1b]">
             {errorMessage}
@@ -250,4 +254,4 @@
             </div>
         {/if}
     {/if}
-</div>
+</div> -->

@@ -58,21 +58,18 @@
         >
             <div class="flex justify-between items-center w-full">
                 <strong>Question {q.id}</strong>
-                {#if ev}
-                    {#if ev.status === "unanswered"}
-                        <span class="text-red-600 text-xs">
-                            Not Attempted
-                        </span>
-                    {:else}
-                        <span
-                            class="text-sm {ev.score_awarded ===
-                            q.marks
-                                ? 'text-green-600'
-                                : 'text-orange-500'}"
-                        >
-                            {ev.score_string}
-                        </span>
-                    {/if}
+
+                {#if !ev || ev.status === "unanswered"}
+                    <span class="text-sm text-red-600">Not Attempted</span>
+                {:else}
+                    <span
+                        class="text-sm {Number(ev.score_awarded) ===
+                        Number(q.marks)
+                            ? 'text-green-600'
+                            : 'text-orange-500'}"
+                    >
+                        {ev.score_string}
+                    </span>
                 {/if}
             </div>
             <p class="text-sm leading-relaxed">{q.text}</p>

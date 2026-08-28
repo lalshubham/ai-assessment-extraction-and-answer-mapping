@@ -38,14 +38,15 @@ export const POST: RequestHandler = async ({ request }) => {
             
             For each question:
             1. Evaluate step-by-step.
-               - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words the student did not write.
-               - MCQ RULE: If options are provided, the correct answer is STRICTLY limited to one of those exact options. Choose the best fit among the provided options ONLY. Do NOT invent or suggest external correct answers that are not present in the given option list.
-               - NON-MCQ RULE: Formulate the strict, standard academic answer for the provided grade level. Deduct marks appropriately for vague or non-scientific terminology instead of exact curriculum terms. Do not penalize for missing advanced edge-case facts outside the standard curriculum.
-            2. Assign a numeric 'score_awarded' (use decimals for half marks).
+               - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words.
+               - MCQ RULE: Compare the student's handwritten answer EXACTLY to the options. If the student wrote the correct option letter, the correct text, or both, YOU MUST AWARD FULL MARKS immediately and set feedback to Correct with the correct option. Do NOT second-guess.
+               - NON-MCQ RULE: Formulate the standard academic answer for the provided grade level. If the student's answer is conceptually correct, YOU MUST AWARD FULL MARKS. Deduct marks ONLY for missing or vague terminology.
+            2. Assign a numeric 'score_awarded'. CRITICAL: If the answer is correct, this MUST equal the exact 'marks' value provided for this question in the JSON.
             3. Assign 'score_string' containing ONLY the fraction. The denominator MUST be the exact 'marks' value provided for this specific question in the JSON.
             4. Provide 'feedback'.
-               - MCQ RULE: Mention the student's chosen answer.
-               - NON-MCQ RULE: Clearly explain what was incorrect in the answer and what important information or points were missing.
+               - Keep it direct and concise. NO internal monologue.
+               - If full marks are awarded, just say Correct (with the correct option for MCQs).
+               - If marks are deducted, clearly explain what was incorrect based on what was ACTUALLY written.
             5. Provide a precise bounding box [ymin, xmin, ymax, xmax] on a 0-1000 scale.
                - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
                - RULE 2 (Right Edge): Scan every line of the student's answer. Push xmax past the absolute furthest word on the right so no trailing letters are cut off. Over-estimate slightly to be safe.
@@ -103,6 +104,24 @@ export const POST: RequestHandler = async ({ request }) => {
 			2,
 			'Evaluation API'
 		);
+
+		if (parsedData?.evaluations && Array.isArray(parsedData.evaluations)) {
+			for (const ev of parsedData.evaluations) {
+				const q = questions.find((question: any) => question.id === ev.question_id);
+
+				if (q && q.marks !== undefined) {
+					const maxMarks = Number(q.marks);
+					let awarded = Number(ev.score_awarded) || 0;
+
+					if (awarded > maxMarks) {
+						awarded = maxMarks;
+					}
+
+					ev.score_awarded = awarded;
+					ev.score_string = `${awarded}/${maxMarks}`;
+				}
+			}
+		}
 
 		return json(parsedData);
 	}
