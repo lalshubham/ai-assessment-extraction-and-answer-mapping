@@ -3,6 +3,8 @@ export type ImageData = {
     dataUrl: string
 };
 
+export type LoadingStage = 'uploading' | 'extracting' | 'evaluating';
+
 export type GeminiContent = {
     text: string;
 } | {
@@ -29,11 +31,11 @@ export type Exam = {
 export type Evaluation = {
     question_id: string;
     status: 'answered' | 'unanswered';
-    score_awarded?: number;
+    score_awarded: number;
     score_string: string;
     feedback: string;
     page_index: number;
-    bounding_box?: [number, number, number, number];
+    bounding_box: [number, number, number, number];
 };
 
 export type Assessment = {

@@ -1,13 +1,13 @@
 <script lang="ts">
-    import type { ImageData, Exam, Assessment } from "$lib/types";
+    import type { LoadingStage, ImageData, Exam, Assessment } from "$lib/types";
     import processFileToImages from "$lib/utils/file";
     import UploadScreen from "$lib/components/UploadScreen.svelte";
     import LoadingScreen from "$lib/components/LoadingScreen.svelte";
     import QuestionPanel from "$lib/components/QuestionPanel.svelte";
     import AnswerPanel from "$lib/components/AnswerPanel.svelte";
 
-    let currentScreen = $state<1 | 2 | 3>(1);
-    let progressStatus = $state<string | null>(null);
+    let currentScreen = $state<"upload" | "loading" | "results">("upload");
+    let loadingStage = $state<LoadingStage>("uploading");
     let errorMessage = $state<string | null>(null);
 
     let questionFile = $state<File | null>(null);
@@ -47,7 +47,7 @@
     }
 
     async function runPipeline(mode: "full" | "re-extract" | "re-evaluate") {
-        currentScreen = 2;
+        currentScreen = "loading";
         errorMessage = null;
         activeQuestionId = null;
 
@@ -58,8 +58,7 @@
 
         try {
             if (mode === "full" || cachedAImages.length === 0) {
-                progressStatus =
-                    "Converting documents into secure image streams";
+                loadingStage = "uploading";
                 const [qImages, aImages] = await Promise.all([
                     processFileToImages(questionFile!),
                     processFileToImages(answerFile!),
@@ -70,8 +69,7 @@
             }
 
             if (mode === "full" || mode === "re-extract") {
-                progressStatus =
-                    "Analyzing question paper structure and extracting text";
+                loadingStage = "extracting";
                 const qFormData = new FormData();
                 cachedQImages.forEach((img) =>
                     qFormData.append("images", img.blob, "page.jpg"),
@@ -89,8 +87,7 @@
                 exam = await qRes.json();
             }
 
-            progressStatus =
-                "AI is evaluating student answers against the paper";
+            loadingStage = "evaluating";
             const aFormData = new FormData();
             aFormData.append("exam", JSON.stringify(exam));
             cachedAImages.forEach((img) =>
@@ -108,21 +105,16 @@
                 );
             assessment = await aRes.json();
 
-            progressStatus = "Finalizing assessment reports";
-            setTimeout(() => {
-                currentScreen = 3;
-                progressStatus = null;
-            }, 800);
+            currentScreen = "results";
         } catch (error: unknown) {
             console.error(error);
             errorMessage =
                 error instanceof Error ? error.message : "Processing failed.";
-            currentScreen = mode === "full" ? 1 : 3;
-            progressStatus = null;
+            currentScreen = mode === "full" ? "upload" : "results";
         }
     }
 
-    function resetToScreen1() {
+    function resetToUpload() {
         questionFile = null;
         answerFile = null;
         cachedQImages = [];
@@ -132,7 +124,7 @@
         assessment = null;
         activeQuestionId = null;
         errorMessage = null;
-        currentScreen = 1;
+        currentScreen = "upload";
     }
 </script>
 
@@ -143,16 +135,16 @@
         </div>
     {/if}
 
-    {#if currentScreen === 1}
+    {#if currentScreen === "upload"}
         <UploadScreen
             {questionFile}
             {answerFile}
             onFileUpload={handleFileUpload}
             onStart={() => runPipeline("full")}
         />
-    {:else if currentScreen === 2}
-        <LoadingScreen {progressStatus} />
-    {:else if currentScreen === 3}
+    {:else if currentScreen === "loading"}
+        <LoadingScreen stage={loadingStage} />
+    {:else if currentScreen === "results"}
         <div
             class="flex flex-col md:flex-row items-center justify-between gap-4 border p-3 bg-white"
         >
@@ -161,7 +153,7 @@
             </div>
             <div class="flex flex-wrap justify-center gap-2 w-full md:w-auto">
                 <button
-                    onclick={resetToScreen1}
+                    onclick={resetToUpload}
                     class="px-4 py-2 border bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm"
                 >
                     Upload New
