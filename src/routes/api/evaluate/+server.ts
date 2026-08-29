@@ -40,6 +40,7 @@ export const POST: RequestHandler = async ({ request }) => {
             
             For each question in the JSON:
             1. Evaluate step-by-step.
+               - MAPPING RULE: Match the student's handwritten question numbers directly to the JSON IDs. Even if the student's answer is completely irrelevant, off-topic, or answers a different question, you MUST map it, draw the bounding box, evaluate it (give 0 marks if irrelevant), and provide feedback. Do NOT ignore it.
                - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words.
                - MCQ RULE: Compare the student's handwritten answer EXACTLY to the options. If the student wrote the correct option letter, the correct text, or both, YOU MUST AWARD FULL MARKS immediately and set feedback to Correct with the correct option. Do NOT second-guess.
                - NON-MCQ RULE: Formulate the standard academic answer for the provided grade level. If the student's answer is conceptually correct, YOU MUST AWARD FULL MARKS. Deduct marks ONLY for missing or vague terminology.
@@ -53,7 +54,7 @@ export const POST: RequestHandler = async ({ request }) => {
                - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
                - RULE 2 (Right Edge): Scan every line of the student's answer. Push xmax past the absolute furthest word on the right so no trailing letters are cut off. Over-estimate slightly to be safe.
                - RULE 3 (Top & Bottom): Capture all text lines, diagrams, and labels belonging to this question. Stop immediately before the next question begins. Exclude printed section headers.
-            6. Set status to 'unanswered' ONLY if the space is completely blank.`
+            6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.`
 		});
 
 		const parsedData = await fetchAndParseAI<EvaluationResponse>(
