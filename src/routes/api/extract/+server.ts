@@ -1,11 +1,11 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { GEMINI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 import type { GeminiContent, ExtractionResponse, Question } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
