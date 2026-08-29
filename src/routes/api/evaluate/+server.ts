@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import type { ExamMetadata, GeminiContent } from '$lib/types';
+import type { ExamMetadata, Question, GeminiContent, EvaluationResponse } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const metadata = JSON.parse(metadataStr) as ExamMetadata;
-		const questions = JSON.parse(questionsStr) as Record<string, unknown>[];
+		const questions = JSON.parse(questionsStr) as Question[];
 
 		const parts: GeminiContent[] = [];
 
@@ -54,7 +54,7 @@ export const POST: RequestHandler = async ({ request }) => {
             6. Set status to 'unanswered' ONLY if the space is completely blank.`
 		});
 
-		const parsedData = await fetchAndParseAI<Record<string, unknown>>(
+		const parsedData = await fetchAndParseAI<EvaluationResponse>(
 			() => ai.models.generateContent({
 				model: 'gemini-3.5-flash-lite',
 				contents: parts,
@@ -107,7 +107,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (parsedData?.evaluations && Array.isArray(parsedData.evaluations)) {
 			for (const ev of parsedData.evaluations) {
-				const q = questions.find((question: any) => question.id === ev.question_id);
+				const q = questions.find((question) => question.id === ev.question_id);
 
 				if (q && q.marks !== undefined) {
 					const maxMarks = Number(q.marks);

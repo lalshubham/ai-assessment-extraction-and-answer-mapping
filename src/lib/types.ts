@@ -22,6 +22,7 @@ export type Question = {
     text: string;
     marks?: number;
     options?: string[];
+    marks_equation?: string;
 };
 
 export type Evaluation = {
@@ -32,4 +33,13 @@ export type Evaluation = {
     feedback?: string;
     page_index?: number;
     bounding_box?: [number, number, number, number];
+};
+
+export type ExtractionResponse = {
+    metadata: ExamMetadata;
+    questions: Question[];
+};
+
+export type EvaluationResponse = {
+    evaluations: Evaluation[];
 };

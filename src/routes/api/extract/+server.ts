@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import type { GeminiContent } from '$lib/types';
+import type { GeminiContent, ExtractionResponse, Question } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -32,11 +32,11 @@ export const POST: RequestHandler = async ({ request }) => {
             2. Extract all questions in their exact printed order.
             3. Treat labeled sub-parts as distinct questions.
             4. For the 'marks' field, extract a simple number (e.g., 1, 2, 5).
-            5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'section_raw_header' field for EVERY question that belongs to that section. If there is no multiplier, leave it empty.
+            5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'marks_equation' field for EVERY question that belongs to that section. If there is no multiplier, leave it empty.
             6. Extract MCQ options into an array if present.`
         });
 
-        const parsedData = await fetchAndParseAI<Record<string, unknown>>(
+        const parsedData = await fetchAndParseAI<ExtractionResponse>(
             () => ai.models.generateContent({
                 model: 'gemini-3.5-flash-lite',
                 contents: parts,
@@ -59,7 +59,7 @@ export const POST: RequestHandler = async ({ request }) => {
                                         text: { type: Type.STRING },
                                         marks: { type: Type.NUMBER },
                                         options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                        section_raw_header: {
+                                        marks_equation: {
                                             type: Type.STRING,
                                             description: "The exact marks equation from the section header (e.g., '5 x 2')."
                                         }
@@ -77,12 +77,12 @@ export const POST: RequestHandler = async ({ request }) => {
         );
 
         if (parsedData?.questions && Array.isArray(parsedData.questions)) {
-            const groups: Record<string, any[]> = {};
+            const groups: Record<string, Question[]> = {};
             let currentHeader = "default";
 
             for (const q of parsedData.questions) {
-                if (q.section_raw_header && q.section_raw_header.trim() !== "") {
-                    currentHeader = q.section_raw_header.replace(/\s+/g, '').toLowerCase();
+                if (q.marks_equation && q.marks_equation.trim() !== "") {
+                    currentHeader = q.marks_equation.replace(/\s+/g, '').toLowerCase();
                 }
                 if (!groups[currentHeader]) groups[currentHeader] = [];
                 groups[currentHeader].push(q);
