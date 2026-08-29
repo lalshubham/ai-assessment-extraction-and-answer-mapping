@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '$env/dynamic/private';
 import { type RequestHandler, json } from '@sveltejs/kit';
-import type { ExamMetadata, Question, GeminiContent, EvaluationResponse } from '$lib/types';
+import type { Exam, GeminiContent, Evaluation, Assessment } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
@@ -10,29 +10,21 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const formData = await request.formData();
 		const files = formData.getAll('images') as File[];
-		const metadataStr = formData.get('metadata') as string;
-		const questionsStr = formData.get('questions') as string;
+		const examStr = formData.get('exam') as string;
 
-		if (!files.length || !metadataStr || !questionsStr) {
+		if (!files.length || !examStr) {
 			return json({ error: 'Missing required data' }, { status: 400 });
 		}
 
-		const metadata = JSON.parse(metadataStr) as ExamMetadata;
-		const questions = JSON.parse(questionsStr) as Question[];
+		const exam = JSON.parse(examStr) as Exam;
 
-		const parts: GeminiContent[] = [];
-
-		for (const file of files) {
-			const arrayBuffer = await file.arrayBuffer();
-			const buffer = Buffer.from(arrayBuffer);
-			parts.push({
-				inlineData: { data: buffer.toString('base64'), mimeType: file.type || 'image/jpeg' }
-			});
-		}
+		const parts: GeminiContent[] = await Promise.all(files.map(async file => ({
+			inlineData: { data: Buffer.from(await file.arrayBuffer()).toString('base64'), mimeType: file.type || 'image/jpeg' }
+		})));
 
 		parts.push({
-			text: `You are an expert ${metadata.subject || 'school'} teacher for ${metadata.grade_level || 'students'}.
-            Here are the questions in JSON format: ${JSON.stringify(questions)}
+			text: `You are an expert ${exam.subject || 'school'} teacher for ${exam.grade_level || 'students'}.
+            Here are the questions in JSON format: ${JSON.stringify(exam.questions)}
             
             CRITICAL INSTRUCTION: You MUST ONLY evaluate the exact questions provided in the JSON array above. Do NOT evaluate or assign scores to any other answers you might see on the page that do not exist in the provided JSON.
             
@@ -55,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
             6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.`
 		});
 
-		const parsedData = await fetchAndParseAI<EvaluationResponse>(
+		const parsedData = await fetchAndParseAI<{ evaluations: Evaluation[] }>(
 			() => ai.models.generateContent({
 				model: 'gemini-3.5-flash-lite',
 				contents: parts,
@@ -102,34 +94,37 @@ export const POST: RequestHandler = async ({ request }) => {
 					}
 				}
 			}),
-			2,
-			'Evaluation API'
+			2, 'Evaluation API'
 		);
 
+		let finalTotalScore = 0;
+
 		if (parsedData?.evaluations?.length) {
-			parsedData.evaluations = parsedData.evaluations.filter(ev =>
-				questions.some(q => q.id === ev.question_id)
-			);
+			parsedData.evaluations = parsedData.evaluations.filter(ev => exam.questions.some(q => q.id === ev.question_id));
 
 			parsedData.evaluations.forEach(ev => {
-				const q = questions.find(q => q.id === ev.question_id);
+				const q = exam.questions.find(q => q.id === ev.question_id);
 				if (q?.marks !== undefined) {
 					const maxMarks = Number(q.marks);
 					const awarded = Math.min(Number(ev.score_awarded) || 0, maxMarks);
 
 					ev.score_awarded = awarded;
 					ev.score_string = `${awarded}/${maxMarks}`;
+					finalTotalScore += awarded;
 				}
 			});
 		}
 
-		return json(parsedData);
+		const assessmentResult: Assessment = {
+			total_score: Number(finalTotalScore.toFixed(2)),
+			evaluations: parsedData?.evaluations || []
+		};
+
+		return json(assessmentResult);
 	}
 	catch (error: unknown) {
 		console.error('Evaluation Error:', error);
-		const msg = error instanceof Error && error.message.includes('truncated')
-			? 'AI output was truncated due to length. Please try again.'
-			: 'Failed to evaluate answers.';
+		const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on extraction.' : 'Failed to evaluate answers.';
 		return json({ error: msg }, { status: 500 });
 	}
 };

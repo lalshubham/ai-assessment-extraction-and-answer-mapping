@@ -3,11 +3,6 @@ export type ImageData = {
     dataUrl: string
 };
 
-export type ExamMetadata = {
-    grade_level?: string;
-    subject?: string;
-};
-
 export type GeminiContent = {
     text: string;
 } | {
@@ -20,27 +15,28 @@ export type GeminiContent = {
 export type Question = {
     id: string;
     text: string;
-    marks?: number;
+    marks: number;
     options?: string[];
-    marks_equation?: string;
-    parent_total_marks?: number;
+};
+
+export type Exam = {
+    grade_level: string;
+    subject: string;
+    total_marks: number;
+    questions: Question[];
 };
 
 export type Evaluation = {
     question_id: string;
     status: 'answered' | 'unanswered';
     score_awarded?: number;
-    score_string?: string;
-    feedback?: string;
-    page_index?: number;
+    score_string: string;
+    feedback: string;
+    page_index: number;
     bounding_box?: [number, number, number, number];
 };
 
-export type ExtractionResponse = {
-    metadata: ExamMetadata;
-    questions: Question[];
-};
-
-export type EvaluationResponse = {
+export type Assessment = {
+    total_score: number;
     evaluations: Evaluation[];
 };

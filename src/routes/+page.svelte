@@ -1,10 +1,5 @@
 <script lang="ts">
-    import type {
-        ImageData,
-        ExamMetadata,
-        Question,
-        Evaluation,
-    } from "$lib/types";
+    import type { ImageData, Exam, Assessment } from "$lib/types";
     import processFileToImages from "$lib/utils/file";
     import UploadScreen from "$lib/components/UploadScreen.svelte";
     import LoadingScreen from "$lib/components/LoadingScreen.svelte";
@@ -22,19 +17,11 @@
     let cachedAImages = $state<ImageData[]>([]);
     let answerImages = $state<string[]>([]);
 
-    let examMeta = $state<ExamMetadata | null>(null);
-    let questions = $state<Question[]>([]);
-    let evaluations = $state<Evaluation[]>([]);
+    let exam = $state<Exam | null>(null);
+    let assessment = $state<Assessment | null>(null);
+
     let activeQuestionId = $state<string | null>(null);
-
     let activeTab = $state<"questions" | "answers">("questions");
-
-    let totalMaxMarks = $derived(
-        questions.reduce((sum, q) => sum + (q.marks || 0), 0),
-    );
-    let totalScore = $derived(
-        evaluations.reduce((sum, ev) => sum + (ev.score_awarded || 0), 0),
-    );
 
     function handleFileUpload(e: Event, type: "question" | "answer") {
         const input = e.currentTarget as HTMLInputElement;
@@ -62,12 +49,11 @@
     async function runPipeline(mode: "full" | "re-extract" | "re-evaluate") {
         currentScreen = 2;
         errorMessage = null;
-
-        evaluations = [];
         activeQuestionId = null;
+
         if (mode !== "re-evaluate") {
-            questions = [];
-            examMeta = null;
+            exam = null;
+            assessment = null;
         }
 
         try {
@@ -95,21 +81,18 @@
                     method: "POST",
                     body: qFormData,
                 });
+
                 if (!qRes.ok)
                     throw new Error(
                         (await qRes.json()).error || "Extraction failed.",
                     );
-
-                const qData = await qRes.json();
-                examMeta = qData.metadata;
-                questions = qData.questions;
+                exam = await qRes.json();
             }
 
             progressStatus =
                 "AI is evaluating student answers against the paper";
             const aFormData = new FormData();
-            aFormData.append("metadata", JSON.stringify(examMeta));
-            aFormData.append("questions", JSON.stringify(questions));
+            aFormData.append("exam", JSON.stringify(exam));
             cachedAImages.forEach((img) =>
                 aFormData.append("images", img.blob, "answer.jpg"),
             );
@@ -118,12 +101,12 @@
                 method: "POST",
                 body: aFormData,
             });
+
             if (!aRes.ok)
                 throw new Error(
                     (await aRes.json()).error || "Evaluation failed.",
                 );
-
-            evaluations = (await aRes.json()).evaluations;
+            assessment = await aRes.json();
 
             progressStatus = "Finalizing assessment reports";
             setTimeout(() => {
@@ -145,9 +128,8 @@
         cachedQImages = [];
         cachedAImages = [];
         answerImages = [];
-        examMeta = null;
-        questions = [];
-        evaluations = [];
+        exam = null;
+        assessment = null;
         activeQuestionId = null;
         errorMessage = null;
         currentScreen = 1;
@@ -199,7 +181,7 @@
             </div>
         </div>
 
-        {#if questions.length > 0}
+        {#if exam?.questions?.length}
             <div class="flex md:hidden w-full p-1 border">
                 <button
                     onclick={() => (activeTab = "questions")}
@@ -227,14 +209,7 @@
                         ? 'block'
                         : 'hidden'} md:block"
                 >
-                    <QuestionPanel
-                        {examMeta}
-                        {questions}
-                        {evaluations}
-                        bind:activeQuestionId
-                        {totalScore}
-                        {totalMaxMarks}
-                    />
+                    <QuestionPanel {exam} {assessment} bind:activeQuestionId />
                 </div>
                 <div
                     class="h-full overflow-hidden {activeTab === 'answers'
@@ -243,7 +218,7 @@
                 >
                     <AnswerPanel
                         {answerImages}
-                        {evaluations}
+                        {assessment}
                         {activeQuestionId}
                     />
                 </div>

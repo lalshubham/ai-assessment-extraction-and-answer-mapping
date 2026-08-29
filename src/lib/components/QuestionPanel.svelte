@@ -1,21 +1,13 @@
 <script lang="ts">
-    import type { ExamMetadata, Question, Evaluation } from "$lib/types";
+    import type { Exam, Assessment } from "$lib/types";
 
-    let {
-        examMeta,
-        questions,
-        evaluations,
-        activeQuestionId = $bindable(),
-        totalScore,
-        totalMaxMarks,
-    } = $props<{
-        examMeta: ExamMetadata | null;
-        questions: Question[];
-        evaluations: Evaluation[];
+    interface Props {
+        exam: Exam;
+        assessment: Assessment | null;
         activeQuestionId: string | null;
-        totalScore: number;
-        totalMaxMarks: number;
-    }>();
+    }
+
+    let { exam, assessment, activeQuestionId = $bindable() }: Props = $props();
 
     function toggleQuestion(id: string) {
         activeQuestionId = activeQuestionId === id ? null : id;
@@ -29,23 +21,21 @@
 <div
     class="flex flex-col gap-2 w-full h-full overflow-y-auto border p-2 bg-white"
 >
-    {#if examMeta}
-        <div class="flex items-center justify-between gap-1">
-            <div class="text-center">
-                {examMeta.grade_level || ""}
-                {examMeta.subject || ""}
-            </div>
-            {#if evaluations.length > 0}
-                <div class="text-green-600 text-center">
-                    Total Score: {totalScore} / {totalMaxMarks}
-                </div>
-            {/if}
+    <div class="flex items-center justify-between gap-1">
+        <div class="text-center">
+            {exam.grade_level || ""}
+            {exam.subject || ""}
         </div>
-    {/if}
+        {#if assessment?.evaluations?.length}
+            <div class="text-green-600 text-center">
+                Total Score: {assessment.total_score} / {exam.total_marks}
+            </div>
+        {/if}
+    </div>
 
-    {#each questions as q (q.id)}
-        {@const ev = evaluations.find(
-            (e: Evaluation) => e.question_id === q.id,
+    {#each exam.questions as q (q.id)}
+        {@const ev = assessment?.evaluations?.find(
+            (e) => e.question_id === q.id,
         )}
 
         <button
@@ -63,9 +53,9 @@
                     <span class="text-sm text-red-600">Not Attempted</span>
                 {:else}
                     <span
-                        class="text-sm {Number(ev.score_awarded) === 0
+                        class="text-sm {ev.score_awarded === 0
                             ? 'text-red-600'
-                            : Number(ev.score_awarded) < Number(q.marks)
+                            : ev.score_awarded < q.marks
                               ? 'text-orange-500'
                               : 'text-green-600'}"
                     >
@@ -73,7 +63,9 @@
                     </span>
                 {/if}
             </div>
+
             <p class="text-sm leading-relaxed">{q.text}</p>
+
             {#if q.options && q.options.length > 0}
                 <div class="text-sm border-gray-300">
                     {#each q.options as opt (opt)}
@@ -81,6 +73,7 @@
                     {/each}
                 </div>
             {/if}
+
             {#if activeQuestionId === q.id && ev?.feedback}
                 <div class="text-sm w-full">
                     <strong>Feedback:</strong>
