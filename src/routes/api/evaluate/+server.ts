@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { GEMINI_API_KEY } from '$env/static/private';
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
-import type { ExamMetadata, Question, GeminiContent, EvaluationResponse } from '$lib/types';
+import type { ExamMetadata, GeminiContent, EvaluationResponse, Question } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
@@ -36,7 +36,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			text: `You are an expert ${metadata.subject || 'school'} teacher for ${metadata.grade_level || 'students'}.
             Here are the questions in JSON format: ${JSON.stringify(questions)}
             
-            For each question:
+            CRITICAL INSTRUCTION: You MUST ONLY evaluate the exact questions provided in the JSON array above. Do NOT evaluate or assign scores to any other answers you might see on the page that do not exist in the provided JSON.
+            
+            For each question in the JSON:
             1. Evaluate step-by-step.
                - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words.
                - MCQ RULE: Compare the student's handwritten answer EXACTLY to the options. If the student wrote the correct option letter, the correct text, or both, YOU MUST AWARD FULL MARKS immediately and set feedback to Correct with the correct option. Do NOT second-guess.
@@ -106,6 +108,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 
 		if (parsedData?.evaluations && Array.isArray(parsedData.evaluations)) {
+			parsedData.evaluations = parsedData.evaluations.filter(ev =>
+				questions.some(q => q.id === ev.question_id)
+			);
+
 			for (const ev of parsedData.evaluations) {
 				const q = questions.find((question) => question.id === ev.question_id);
 

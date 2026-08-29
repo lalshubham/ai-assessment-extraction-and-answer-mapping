@@ -63,10 +63,11 @@
                     <span class="text-sm text-red-600">Not Attempted</span>
                 {:else}
                     <span
-                        class="text-sm {Number(ev.score_awarded) ===
-                        Number(q.marks)
-                            ? 'text-green-600'
-                            : 'text-orange-500'}"
+                        class="text-sm {Number(ev.score_awarded) === 0
+                            ? 'text-red-600'
+                            : Number(ev.score_awarded) < Number(q.marks)
+                              ? 'text-orange-500'
+                              : 'text-green-600'}"
                     >
                         {ev.score_string}
                     </span>
