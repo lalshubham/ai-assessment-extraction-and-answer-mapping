@@ -1,7 +1,6 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '$env/dynamic/private';
-import type { RequestHandler } from './$types';
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import type { GeminiContent, ExtractionResponse, Question } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
@@ -31,8 +30,8 @@ export const POST: RequestHandler = async ({ request }) => {
             1. Extract class/grade level and subject. If not found, keep empty string.
             2. Extract all questions in their exact printed order.
             3. Treat labeled sub-parts as distinct questions. CRITICAL: Ensure the 'id' always starts with the main question number (e.g., "11a", "11b", NOT just "a" or "b").
-            4. For the 'marks' field, extract a simple number (e.g., 1, 2, 5).
-            5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'marks_equation' field for EVERY question that belongs to that section. If there is no multiplier, leave it empty.
+            4. For the 'marks' field, extract a simple number. CRITICAL FOR SUB-PARTS: If a parent question has a single total mark provided (e.g., "four marks each"), extract it into 'parent_total_marks' for EVERY sub-part. Do NOT divide the marks yourself.
+            5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'marks_equation' field for EVERY question that belongs to that section. If there is no multiplier, leave empty.
             6. Extract MCQ options into an array if present.`
         });
 
@@ -48,7 +47,10 @@ export const POST: RequestHandler = async ({ request }) => {
                         properties: {
                             metadata: {
                                 type: Type.OBJECT,
-                                properties: { grade_level: { type: Type.STRING }, subject: { type: Type.STRING } }
+                                properties: {
+                                    grade_level: { type: Type.STRING },
+                                    subject: { type: Type.STRING }
+                                }
                             },
                             questions: {
                                 type: Type.ARRAY,
@@ -58,11 +60,12 @@ export const POST: RequestHandler = async ({ request }) => {
                                         id: { type: Type.STRING },
                                         text: { type: Type.STRING },
                                         marks: { type: Type.NUMBER },
-                                        options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                                        marks_equation: {
-                                            type: Type.STRING,
-                                            description: "The exact marks equation from the section header (e.g., '5 x 2')."
-                                        }
+                                        options: {
+                                            type: Type.ARRAY,
+                                            items: { type: Type.STRING }
+                                        },
+                                        marks_equation: { type: Type.STRING },
+                                        parent_total_marks: { type: Type.NUMBER }
                                     },
                                     required: ['id', 'text', 'marks']
                                 }
@@ -76,59 +79,35 @@ export const POST: RequestHandler = async ({ request }) => {
             'Extraction API'
         );
 
-        if (parsedData?.questions && Array.isArray(parsedData.questions)) {
-            const groups: Record<string, Question[]> = {};
-            let currentHeader = "default";
+        if (parsedData?.questions?.length) {
+            const parents: Record<string, Question[]> = {};
+            const equations: Record<string, Set<string>> = {};
 
-            for (const q of parsedData.questions) {
-                if (q.marks_equation && q.marks_equation.trim() !== "") {
-                    currentHeader = q.marks_equation.replace(/\s+/g, '').toLowerCase();
+            parsedData.questions.forEach(q => {
+                const parentId = q.id.match(/^\d+/)?.[0] || q.id;
+                (parents[parentId] ??= []).push(q);
+
+                const eq = q.marks_equation?.replace(/\s+/g, '');
+                if (eq) (equations[eq] ??= new Set()).add(parentId);
+            });
+
+            for (const [eq, uniqueParentIds] of Object.entries(equations)) {
+                const [n1, n2] = (eq.match(/\d+(\.\d+)?/g) || []).map(Number);
+                const actualCount = uniqueParentIds.size;
+
+                const trueMarks = (n1 === actualCount) ? n2 : (n2 === actualCount ? n1 : null);
+
+                if (trueMarks != null) {
+                    uniqueParentIds.forEach(pId => {
+                        parents[pId].forEach(q => q.marks = trueMarks / parents[pId].length);
+                    });
                 }
-                if (!groups[currentHeader]) groups[currentHeader] = [];
-                groups[currentHeader].push(q);
             }
 
-            for (const [header, block] of Object.entries(groups)) {
-                if (header === "default" || !header) continue;
-
-                const nums = (header.match(/\d+(\.\d+)?/g) || []).map(Number);
-                if (nums.length >= 2) {
-                    const [n1, n2] = nums;
-
-                    const mainQuestionIds = block.map(q => {
-                        const match = q.id.match(/^\d+/);
-                        return match ? match[0] : q.id;
-                    });
-                    const uniqueMainQuestions = new Set(mainQuestionIds);
-                    const actualMainQuestionCount = uniqueMainQuestions.size;
-
-                    let trueMarksPerMain: number | null = null;
-
-                    if (n1 === actualMainQuestionCount && n2 !== actualMainQuestionCount) {
-                        trueMarksPerMain = n2;
-                    }
-                    else if (n2 === actualMainQuestionCount && n1 !== actualMainQuestionCount) {
-                        trueMarksPerMain = n1;
-                    }
-                    else if (n1 === actualMainQuestionCount && n2 === actualMainQuestionCount) {
-                        trueMarksPerMain = n1;
-                    }
-
-                    if (trueMarksPerMain !== null) {
-                        for (const mainId of uniqueMainQuestions) {
-                            const subQs = block.filter(q => {
-                                const match = q.id.match(/^\d+/);
-                                const qMainId = match ? match[0] : q.id;
-                                return qMainId === mainId;
-                            });
-
-                            const splitMarks = trueMarksPerMain / subQs.length;
-
-                            for (const subQ of subQs) {
-                                subQ.marks = splitMarks;
-                            }
-                        }
-                    }
+            for (const block of Object.values(parents)) {
+                const pMark = block.find(q => q.parent_total_marks != null)?.parent_total_marks;
+                if (block.length > 1 && pMark != null) {
+                    block.forEach(q => q.marks = pMark / block.length);
                 }
             }
         }

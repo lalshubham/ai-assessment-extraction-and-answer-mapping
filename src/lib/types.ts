@@ -23,6 +23,7 @@ export type Question = {
     marks?: number;
     options?: string[];
     marks_equation?: string;
+    parent_total_marks?: number;
 };
 
 export type Evaluation = {

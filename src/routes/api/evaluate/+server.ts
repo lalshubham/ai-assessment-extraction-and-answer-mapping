@@ -1,8 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '$env/dynamic/private';
-import type { RequestHandler } from './$types';
-import { json } from '@sveltejs/kit';
-import type { ExamMetadata, GeminiContent, EvaluationResponse, Question } from '$lib/types';
+import { type RequestHandler, json } from '@sveltejs/kit';
+import type { ExamMetadata, Question, GeminiContent, EvaluationResponse } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
@@ -11,7 +10,6 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const formData = await request.formData();
 		const files = formData.getAll('images') as File[];
-
 		const metadataStr = formData.get('metadata') as string;
 		const questionsStr = formData.get('questions') as string;
 
@@ -108,26 +106,21 @@ export const POST: RequestHandler = async ({ request }) => {
 			'Evaluation API'
 		);
 
-		if (parsedData?.evaluations && Array.isArray(parsedData.evaluations)) {
+		if (parsedData?.evaluations?.length) {
 			parsedData.evaluations = parsedData.evaluations.filter(ev =>
 				questions.some(q => q.id === ev.question_id)
 			);
 
-			for (const ev of parsedData.evaluations) {
-				const q = questions.find((question) => question.id === ev.question_id);
-
-				if (q && q.marks !== undefined) {
+			parsedData.evaluations.forEach(ev => {
+				const q = questions.find(q => q.id === ev.question_id);
+				if (q?.marks !== undefined) {
 					const maxMarks = Number(q.marks);
-					let awarded = Number(ev.score_awarded) || 0;
-
-					if (awarded > maxMarks) {
-						awarded = maxMarks;
-					}
+					const awarded = Math.min(Number(ev.score_awarded) || 0, maxMarks);
 
 					ev.score_awarded = awarded;
 					ev.score_string = `${awarded}/${maxMarks}`;
 				}
-			}
+			});
 		}
 
 		return json(parsedData);
