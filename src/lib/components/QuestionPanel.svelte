@@ -100,9 +100,9 @@
             >
                 <div class="flex items-center gap-2 shrink-0">
                     <div
-                        class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white transition-colors duration-200 {isActive
-                            ? 'bg-[#ff5623] shadow-md shadow-[#ff5623]/30'
-                            : 'bg-[#4a4a4a]'}"
+                        class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white border-[2px] border-[rgba(255,255,255,0.3)] transition-colors duration-200 {isActive
+                            ? 'bg-[#ff5623]'
+                            : 'bg-[rgb(61,61,61)]'}"
                     >
                         {mainId}
                     </div>

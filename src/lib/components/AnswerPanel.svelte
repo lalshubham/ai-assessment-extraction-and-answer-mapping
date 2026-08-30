@@ -54,7 +54,7 @@
 </script>
 
 <div
-    class="relative flex flex-col bg-gray-100 rounded-2xl overflow-hidden"
+    class="relative flex flex-col bg-[#f0f0f0] rounded-2xl overflow-hidden"
 >
     <div
         class="p-3 flex items-center justify-between gap-4 bg-[#303030] text-white border border-gray-600/50 text-sm"
