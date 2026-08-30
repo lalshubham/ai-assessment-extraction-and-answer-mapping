@@ -31,6 +31,7 @@
     let assessment = $state<Assessment | null>(null);
 
     async function runPipeline(mode: "full" | "re-extract" | "re-evaluate") {
+        isSidebarCollapsed = true;
         currentScreen = "loading";
         errorMessage = null;
 
@@ -112,6 +113,7 @@
         assessment = null;
         errorMessage = null;
         currentScreen = "upload";
+        isSidebarCollapsed = false;
     }
 </script>
 
