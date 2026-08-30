@@ -24,7 +24,7 @@
         ? 'translate-x-0'
         : '-translate-x-[120%] lg:translate-x-0 '} {isSidebarCollapsed
         ? 'lg:w-16'
-        : 'lg:w-64'}"
+        : 'lg:w-72'}"
 >
     <button
         onclick={() => {

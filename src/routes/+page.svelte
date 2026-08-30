@@ -103,22 +103,17 @@
 </script>
 
 <div class="w-full h-[100svh] p-3 lg:p-4 flex gap-4 overflow-auto">
-    {#if errorMessage}
-        <div class="p-4 border bg-[#fee2e2] text-[#991b1b]">
-            {errorMessage}
-        </div>
-    {/if}
-
     <Sidebar bind:isMobileSidebarOpen bind:isSidebarCollapsed />
 
     <div class="flex-1 flex flex-col gap-4">
-        <Navbar {currentScreen} bind:isMobileSidebarOpen />
+        <Navbar bind:currentScreen bind:isMobileSidebarOpen />
 
         <main class="flex-1">
             {#if currentScreen === "upload"}
                 <UploadScreen
                     bind:questionFiles
                     bind:answerFiles
+                    bind:errorMessage
                     onStart={() => runPipeline("full")}
                 />
             {:else if currentScreen === "loading"}

@@ -4,10 +4,12 @@
     let {
         questionFiles = $bindable([]),
         answerFiles = $bindable([]),
+        errorMessage = $bindable(),
         onStart,
     } = $props<{
         questionFiles: File[];
         answerFiles: File[];
+        errorMessage: string | null;
         onStart: () => void;
     }>();
 
@@ -107,11 +109,25 @@
     }
 </script>
 
-<div class="pt-6 pb-10 h-full grid place-items-center">
+<div class="relative pt-6 pb-10 h-full grid place-items-center">
+    {#if errorMessage}
+        <div
+            class="p-4 absolute z-40 top-0 left-0 right-0 flex items-start justify-between gap-4 bg-red-100 text-red-600 border border-red-500"
+        >
+            {errorMessage}
+            <button
+                onclick={() => (errorMessage = null)}
+                class="whitespace-nowrap underline cursor-pointer"
+            >
+                Close Message
+            </button>
+        </div>
+    {/if}
+
     <div class="flex flex-col items-center gap-5">
         <div class="flex flex-col items-center">
             <p
-                class="mb-4 px-4 sm:px-0 font-bold sm:font-semibold text-[23px] sm:text-3xl md:text-4xl leading-7.5 sm:leading-none text-[#2b2b2b] text-center"
+                class="mb-4 px-4 sm:px-0 font-bold sm:font-semibold text-[23px] sm:text-3xl xl:text-4xl leading-7.5 sm:leading-none text-[#2b2b2b] text-center"
             >
                 <span>Upload</span>
                 <span

@@ -6,7 +6,10 @@
         isMobileSidebarOpen: boolean;
     }
 
-    let { currentScreen, isMobileSidebarOpen = $bindable() }: Props = $props();
+    let {
+        currentScreen = $bindable(),
+        isMobileSidebarOpen = $bindable(),
+    }: Props = $props();
 </script>
 
 <header
@@ -16,7 +19,11 @@
         : 'bg-white'}"
 >
     <div class="flex items-center gap-2 lg:gap-5">
-        <button title="Back" class="cursor-pointer">
+        <button
+            onclick={() => (currentScreen = "upload")}
+            title="Back"
+            class="cursor-pointer"
+        >
             <svg width="20" height="20" viewBox="0 0 24 24">
                 <path
                     d="M21 11H5.41l5.3-5.29a1 1 0 1 0-1.42-1.42l-7 7a1 1 0 0 0 0 1.42l7 7a1 1 0 0 0 1.42 0 1 1 0 0 0 0-1.42L5.41 13H21a1 1 0 0 0 0-2"
