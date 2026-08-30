@@ -1,20 +1,16 @@
 <script lang="ts">
     import { tick } from "svelte";
-    import type { Assessment } from "$lib/types";
+    import type { Assessment, ResultStage } from "$lib/types";
 
     interface Props {
         answerImages: string[];
         assessment: Assessment | null;
         activeQuestionId: string | null;
-        activeTab?: "questions" | "answers";
+        activeTab: ResultStage;
     }
 
-    let { 
-        answerImages, 
-        assessment, 
-        activeQuestionId, 
-        activeTab 
-    }: Props = $props();
+    let { answerImages, assessment, activeQuestionId, activeTab }: Props =
+        $props();
 
     let scrollContainer = $state<HTMLElement | null>(null);
     let zoomLevel = $state(100);
@@ -22,13 +18,10 @@
     let totalPages = $derived(answerImages.length);
 
     $effect(() => {
-        const id = activeQuestionId;
-        const tab = activeTab;
-
-        if (!id) return;
+        if (activeTab !== "answers" || !activeQuestionId) return;
 
         tick().then(() => {
-            const element = document.getElementById(`box-${id}`);
+            const element = document.getElementById(`box-${activeQuestionId}`);
             if (element && element.offsetParent !== null) {
                 element.scrollIntoView({ behavior: "smooth", block: "center" });
             }

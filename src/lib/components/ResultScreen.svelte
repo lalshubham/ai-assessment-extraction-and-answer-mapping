@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Exam, Assessment } from "$lib/types";
+    import type { Exam, Assessment, ResultStage } from "$lib/types";
     import QuestionPanel from "./QuestionPanel.svelte";
     import AnswerPanel from "./AnswerPanel.svelte";
 
@@ -12,7 +12,7 @@
     let { exam, assessment, answerImages }: Props = $props();
 
     let activeQuestionId = $state<string | null>(null);
-    let activeTab = $state<"questions" | "answers">("questions");
+    let activeTab = $state<ResultStage>("questions");
 </script>
 
 <div class="h-full min-h-0 flex flex-col gap-4">

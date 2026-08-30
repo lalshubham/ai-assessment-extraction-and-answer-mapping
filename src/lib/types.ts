@@ -2,6 +2,8 @@ export type ScreenStage = 'upload' | 'loading' | 'results';
 
 export type LoadingStage = 'uploading' | 'extracting' | 'evaluating';
 
+export type ResultStage = 'questions' | 'answers';
+
 export type ImageData = {
     blob: Blob;
     dataUrl: string

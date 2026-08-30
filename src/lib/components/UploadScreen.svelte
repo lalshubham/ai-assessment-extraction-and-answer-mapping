@@ -329,11 +329,9 @@
 
                         {#if qLoading}
                             <div
-                                class="flex flex-col items-center justify-center py-4"
+                                class="py-9 flex flex-col items-center justify-center font-medium text-lg text-gray-500"
                             >
-                                <span class="text-sm font-medium text-gray-500">
-                                    Processing...
-                                </span>
+                                Processing...
                             </div>
                         {/if}
                     </div>
@@ -435,11 +433,9 @@
 
                         {#if aLoading}
                             <div
-                                class="flex flex-col items-center justify-center py-4"
+                                class="py-9 flex flex-col items-center justify-center font-medium text-lg text-gray-500"
                             >
-                                <span class="text-sm font-medium text-gray-500">
-                                    Processing...
-                                </span>
+                                Processing...
                             </div>
                         {/if}
                     </div>
@@ -456,10 +452,7 @@
             class="mt-2 py-3 px-6 flex items-center gap-3 font-medium bg-[rgb(61,61,61)] hover:bg-black disabled:bg-[#b2b2b2] text-white border-[3px] border-[rgba(255,255,255,0.3)] shadow-lg rounded-4xl transition-bg duration-200 cursor-pointer disabled:cursor-not-allowed"
         >
             Start Mapping
-            <svg
-                class="w-4.5"
-                viewBox="0 0 15 15"
-            >
+            <svg class="w-4.5" viewBox="0 0 15 15">
                 <path
                     fill="#fff"
                     d="M8.293 2.293a1 1 0 0 1 1.414 0l4.5 4.5a1 1 0 0 1 0 1.414l-4.5 4.5a1 1 0 0 1-1.414-1.414L11 8.5H1.5a1 1 0 0 1 0-2H11L8.293 3.707a1 1 0 0 1 0-1.414"
