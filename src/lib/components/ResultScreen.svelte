@@ -7,18 +7,12 @@
         exam: Exam | null;
         assessment: Assessment | null;
         answerImages: string[];
-        onReset: () => void;
-        onReExtract: () => void;
-        onReEvaluate: () => void;
     }
 
     let {
         exam,
         assessment,
-        answerImages,
-        onReset,
-        onReExtract,
-        onReEvaluate,
+        answerImages
     }: Props = $props();
 
     let activeQuestionId = $state<string | null>(null);
@@ -51,19 +45,15 @@
         </div>
 
         <div
-            class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 overflow-hidden min-h-0"
+            class="grid grid-cols-1 md:grid-cols-2 gap-4"
         >
             <div
-                class="h-full overflow-hidden {activeTab === 'questions'
-                    ? 'block'
-                    : 'hidden'} md:block"
+                class="md:block {activeTab === 'questions' ? 'block' : 'hidden'}"
             >
                 <QuestionPanel {exam} {assessment} bind:activeQuestionId />
             </div>
             <div
-                class="h-full overflow-hidden {activeTab === 'answers'
-                    ? 'block'
-                    : 'hidden'} md:block"
+                class="md:block {activeTab === 'answers' ? 'block' : 'hidden'}"
             >
                 <AnswerPanel {answerImages} {assessment} {activeQuestionId} />
             </div>
