@@ -11,7 +11,6 @@
     let { exam, assessment, activeQuestionId = $bindable() }: Props = $props();
 
     let expanded = new SvelteSet<string>();
-
     let anyExpanded = $derived(expanded.size > 0);
 
     function toggleExpandAll() {
@@ -47,11 +46,6 @@
 
             if (hasFeedback) {
                 expanded.add(id);
-            }
-
-            const element = document.getElementById(`box-${id}`);
-            if (element) {
-                element.scrollIntoView({ behavior: "smooth", block: "center" });
             }
         }
     }
@@ -149,7 +143,6 @@
                                 height="14"
                                 viewBox="0 0 14 14"
                                 fill="none"
-                                xmlns="http://www.w3.org/2000/svg"
                                 class="transition-transform duration-300 {isExpanded
                                     ? 'rotate-0'
                                     : 'rotate-180'}"

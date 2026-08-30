@@ -53,7 +53,12 @@
                     ? 'block'
                     : 'hidden'}"
             >
-                <AnswerPanel {answerImages} {assessment} {activeQuestionId} />
+                <AnswerPanel
+                    {answerImages}
+                    {assessment}
+                    {activeQuestionId}
+                    {activeTab}
+                />
             </div>
         </div>
     {/if}

@@ -27,6 +27,9 @@
     let qDrag = $state(false);
     let aDrag = $state(false);
 
+    let qLoading = $state(false);
+    let aLoading = $state(false);
+
     const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 
     function formatSize(bytes: number) {
@@ -35,50 +38,61 @@
     }
 
     async function processFiles(newFiles: File[], type: "question" | "answer") {
-        const currentFiles = type === "question" ? questionFiles : answerFiles;
-        let totalSize = currentFiles.reduce(
-            (sum: number, f: File) => sum + f.size,
-            0,
-        );
+        if (type === "question") qLoading = true;
+        else aLoading = true;
 
-        for (const file of newFiles) {
-            if (
-                file.type !== "application/pdf" &&
-                !file.type.startsWith("image/")
-            )
-                continue;
+        try {
+            const currentFiles =
+                type === "question" ? questionFiles : answerFiles;
+            let totalSize = currentFiles.reduce(
+                (sum: number, f: File) => sum + f.size,
+                0,
+            );
 
-            if (totalSize + file.size > MAX_SIZE_BYTES) {
-                alert(`Adding "${file.name}" exceeds the 10MB section limit.`);
-                continue;
-            }
+            for (const file of newFiles) {
+                if (
+                    file.type !== "application/pdf" &&
+                    !file.type.startsWith("image/")
+                )
+                    continue;
 
-            totalSize += file.size;
+                if (totalSize + file.size > MAX_SIZE_BYTES) {
+                    alert(
+                        `Adding "${file.name}" exceeds the 10MB section limit.`,
+                    );
+                    continue;
+                }
 
-            let pages = undefined;
-            if (file.type === "application/pdf") {
-                try {
-                    pages = await getPdfPageCount(file);
-                } catch (e) {
-                    console.error("Failed to read PDF pages", e);
+                totalSize += file.size;
+
+                let pages = undefined;
+                if (file.type === "application/pdf") {
+                    try {
+                        pages = await getPdfPageCount(file);
+                    } catch (e) {
+                        console.error("Failed to read PDF pages", e);
+                    }
+                }
+
+                const meta: FileMeta = {
+                    id: Math.random().toString(36).substring(2, 9),
+                    file,
+                    size: formatSize(file.size),
+                    type: file.type === "application/pdf" ? "PDF" : "IMG",
+                    pages,
+                };
+
+                if (type === "question") {
+                    questionFiles = [...questionFiles, file];
+                    qMeta = [...qMeta, meta];
+                } else {
+                    answerFiles = [...answerFiles, file];
+                    aMeta = [...aMeta, meta];
                 }
             }
-
-            const meta: FileMeta = {
-                id: Math.random().toString(36).substring(2, 9),
-                file,
-                size: formatSize(file.size),
-                type: file.type === "application/pdf" ? "PDF" : "IMG",
-                pages,
-            };
-
-            if (type === "question") {
-                questionFiles = [...questionFiles, file];
-                qMeta = [...qMeta, meta];
-            } else {
-                answerFiles = [...answerFiles, file];
-                aMeta = [...aMeta, meta];
-            }
+        } finally {
+            if (type === "question") qLoading = false;
+            else aLoading = false;
         }
     }
 
@@ -100,8 +114,14 @@
 
     function handleDrop(e: DragEvent, type: "question" | "answer") {
         e.preventDefault();
-        if (type === "question") qDrag = false;
-        else aDrag = false;
+
+        if (type === "question") {
+            qDrag = false;
+            if (qLoading) return;
+        } else {
+            aDrag = false;
+            if (aLoading) return;
+        }
 
         if (e.dataTransfer?.files) {
             processFiles(Array.from(e.dataTransfer.files), type);
@@ -222,7 +242,7 @@
                     : 'border-gray-300 bg-white'}"
                 ondragover={(e) => {
                     e.preventDefault();
-                    qDrag = true;
+                    if (!qLoading) qDrag = true;
                 }}
                 ondragleave={() => (qDrag = false)}
                 ondrop={(e) => handleDrop(e, "question")}
@@ -231,16 +251,21 @@
                     type="file"
                     multiple
                     accept=".pdf,image/*"
-                    onchange={(e) =>
+                    disabled={qLoading}
+                    onchange={(e) => {
                         processFiles(
                             Array.from(e.currentTarget.files || []),
                             "question",
-                        )}
-                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        );
+                        e.currentTarget.value = "";
+                    }}
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 {qLoading
+                        ? 'cursor-wait'
+                        : ''}"
                     title=""
                 />
 
-                {#if qMeta.length === 0}
+                {#if qMeta.length === 0 && !qLoading}
                     <div class="flex flex-col items-center pointer-events-none">
                         <div class="bg-gray-100 p-2 rounded-lg mb-3">
                             <svg
@@ -248,8 +273,8 @@
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                                ><path
+                            >
+                                <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     stroke-width="2.5"
@@ -301,6 +326,16 @@
                                 </button>
                             </div>
                         {/each}
+
+                        {#if qLoading}
+                            <div
+                                class="flex flex-col items-center justify-center py-4"
+                            >
+                                <span class="text-sm font-medium text-gray-500">
+                                    Processing...
+                                </span>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
             </div>
@@ -313,7 +348,7 @@
                     : 'border-gray-300 bg-white'}"
                 ondragover={(e) => {
                     e.preventDefault();
-                    aDrag = true;
+                    if (!aLoading) aDrag = true;
                 }}
                 ondragleave={() => (aDrag = false)}
                 ondrop={(e) => handleDrop(e, "answer")}
@@ -322,16 +357,21 @@
                     type="file"
                     multiple
                     accept=".pdf,image/*"
-                    onchange={(e) =>
+                    disabled={aLoading}
+                    onchange={(e) => {
                         processFiles(
                             Array.from(e.currentTarget.files || []),
                             "answer",
-                        )}
-                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                        );
+                        e.currentTarget.value = "";
+                    }}
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 {aLoading
+                        ? 'cursor-wait'
+                        : ''}"
                     title=""
                 />
 
-                {#if aMeta.length === 0}
+                {#if aMeta.length === 0 && !aLoading}
                     <div class="flex flex-col items-center pointer-events-none">
                         <div class="bg-gray-100 p-2 rounded-lg mb-3">
                             <svg
@@ -339,8 +379,8 @@
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
-                                xmlns="http://www.w3.org/2000/svg"
-                                ><path
+                            >
+                                <path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     stroke-width="2.5"
@@ -392,13 +432,26 @@
                                 </button>
                             </div>
                         {/each}
+
+                        {#if aLoading}
+                            <div
+                                class="flex flex-col items-center justify-center py-4"
+                            >
+                                <span class="text-sm font-medium text-gray-500">
+                                    Processing...
+                                </span>
+                            </div>
+                        {/if}
                     </div>
                 {/if}
             </div>
         </div>
 
         <button
-            disabled={questionFiles.length === 0 || answerFiles.length === 0}
+            disabled={questionFiles.length === 0 ||
+                answerFiles.length === 0 ||
+                qLoading ||
+                aLoading}
             onclick={onStart}
             class="mt-2 py-3 px-6 flex items-center gap-3 font-medium bg-[rgb(61,61,61)] hover:bg-black disabled:bg-[#b2b2b2] text-white border-[3px] border-[rgba(255,255,255,0.3)] shadow-lg rounded-4xl transition-bg duration-200 cursor-pointer disabled:cursor-not-allowed"
         >
@@ -406,12 +459,12 @@
             <svg
                 class="w-4.5"
                 viewBox="0 0 15 15"
-                xmlns="http://www.w3.org/2000/svg"
-                ><path
+            >
+                <path
                     fill="#fff"
                     d="M8.293 2.293a1 1 0 0 1 1.414 0l4.5 4.5a1 1 0 0 1 0 1.414l-4.5 4.5a1 1 0 0 1-1.414-1.414L11 8.5H1.5a1 1 0 0 1 0-2H11L8.293 3.707a1 1 0 0 1 0-1.414"
-                /></svg
-            >
+                />
+            </svg>
         </button>
 
         <p class="text-sm text-[#777777] text-center">

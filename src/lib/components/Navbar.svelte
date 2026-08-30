@@ -70,7 +70,6 @@
                 class="hidden sm:block"
                 width="20"
                 viewBox="0 -6 524 524"
-                xmlns="http://www.w3.org/2000/svg"
             >
                 <path d="m64 191 34-34 164 163 164-163 34 34-198 196z" />
             </svg>
