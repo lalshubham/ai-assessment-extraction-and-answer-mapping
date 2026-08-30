@@ -1,6 +1,14 @@
 <script lang="ts">
-    import type { LoadingStage, ImageData, Exam, Assessment } from "$lib/types";
+    import type {
+        ScreenStage,
+        LoadingStage,
+        ImageData,
+        Exam,
+        Assessment,
+    } from "$lib/types";
     import { processFileToImages } from "$lib/utils/file";
+    import Sidebar from "$lib/components/Sidebar.svelte";
+    import Navbar from "$lib/components/Navbar.svelte";
     import UploadScreen from "$lib/components/UploadScreen.svelte";
     import LoadingScreen from "$lib/components/LoadingScreen.svelte";
     import ResultScreen from "$lib/components/ResultScreen.svelte";
@@ -8,7 +16,7 @@
     let isMobileSidebarOpen = $state(false);
     let isSidebarCollapsed = $state(false);
 
-    let currentScreen = $state<"upload" | "loading" | "results">("upload");
+    let currentScreen = $state<ScreenStage>("upload");
     let loadingStage = $state<LoadingStage>("uploading");
     let errorMessage = $state<string | null>(null);
 
@@ -92,18 +100,6 @@
             currentScreen = mode === "full" ? "upload" : "results";
         }
     }
-
-    // function resetToUpload() {
-    //     questionFiles = [];
-    //     answerFiles = [];
-    //     cachedQImages = [];
-    //     cachedAImages = [];
-    //     answerImages = [];
-    //     exam = null;
-    //     assessment = null;
-    //     errorMessage = null;
-    //     currentScreen = "upload";
-    // }
 </script>
 
 <div class="w-full h-[100svh] p-3 lg:p-4 flex gap-4 overflow-auto">
@@ -113,46 +109,10 @@
         </div>
     {/if}
 
-    <button
-        onclick={() => (isMobileSidebarOpen = false)}
-        tabindex={isSidebarCollapsed ? 0 : -1}
-        aria-label="Background blur"
-        class="fixed lg:hidden inset-0 z-40 bg-black/40 backdrop-blur-xs border-none transition-opacity duration-500 {isMobileSidebarOpen
-            ? 'opacity-100 pointer-events-auto'
-            : 'opacity-0 pointer-events-none'}"
-    ></button>
-
-    <aside
-        class="fixed lg:relative inset-y-3 left-3 z-50 lg:inset-auto shrink-0 w-64 lg:h-full bg-white shadow-xl rounded-2xl transition-[transform, width] duration-500 {isMobileSidebarOpen
-            ? 'translate-x-0'
-            : '-translate-x-[120%] lg:translate-x-0 '} {isSidebarCollapsed
-            ? 'lg:w-16'
-            : 'lg:w-64'}"
-    >
-        <button
-            onclick={() => {
-                if (window.innerWidth < 1024) isMobileSidebarOpen = false;
-                else isSidebarCollapsed = !isSidebarCollapsed;
-            }}
-        >
-            <span class="lg:hidden">Close</span>
-            <span class="hidden lg:inline">
-                {isSidebarCollapsed ? "Expand" : "Close"}
-            </span>
-        </button>
-    </aside>
+    <Sidebar bind:isMobileSidebarOpen bind:isSidebarCollapsed />
 
     <div class="flex-1 flex flex-col gap-4">
-        <header
-            class="shrink-0 h-16 bg-white rounded-2xl shadow lg:shadow-none"
-        >
-            <button
-                onclick={() => (isMobileSidebarOpen = !isMobileSidebarOpen)}
-                class="lg:hidden"
-            >
-                Open
-            </button>
-        </header>
+        <Navbar {currentScreen} bind:isMobileSidebarOpen />
 
         <main class="flex-1">
             {#if currentScreen === "upload"}
@@ -164,11 +124,7 @@
             {:else if currentScreen === "loading"}
                 <LoadingScreen stage={loadingStage} />
             {:else if currentScreen === "results"}
-                <ResultScreen
-                    {exam}
-                    {assessment}
-                    {answerImages}
-                />
+                <ResultScreen {exam} {assessment} {answerImages} />
             {/if}
         </main>
     </div>

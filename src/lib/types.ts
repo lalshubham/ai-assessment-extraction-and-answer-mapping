@@ -1,9 +1,11 @@
+export type ScreenStage = 'upload' | 'loading' | 'results';
+
+export type LoadingStage = 'uploading' | 'extracting' | 'evaluating';
+
 export type ImageData = {
     blob: Blob;
     dataUrl: string
 };
-
-export type LoadingStage = 'uploading' | 'extracting' | 'evaluating';
 
 export type GeminiContent = {
     text: string;
