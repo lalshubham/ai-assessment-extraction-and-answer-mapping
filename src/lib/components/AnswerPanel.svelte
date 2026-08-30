@@ -18,10 +18,13 @@
     let totalPages = $derived(answerImages.length);
 
     $effect(() => {
-        if (activeTab !== "answers" || !activeQuestionId) return;
+        void activeTab;
+
+        const id = activeQuestionId;
+        if (!id) return;
 
         tick().then(() => {
-            const element = document.getElementById(`box-${activeQuestionId}`);
+            const element = document.getElementById(`box-${id}`);
             if (element && element.offsetParent !== null) {
                 element.scrollIntoView({ behavior: "smooth", block: "center" });
             }

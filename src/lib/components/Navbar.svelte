@@ -4,11 +4,13 @@
     interface Props {
         currentScreen: ScreenStage;
         isMobileSidebarOpen: boolean;
+        resetToUpload: () => void;
     }
 
     let {
         currentScreen = $bindable(),
         isMobileSidebarOpen = $bindable(),
+        resetToUpload,
     }: Props = $props();
 </script>
 
@@ -19,11 +21,7 @@
         : 'bg-white'}"
 >
     <div class="flex items-center gap-2 lg:gap-5">
-        <button
-            onclick={() => (currentScreen = "upload")}
-            title="Back"
-            class="cursor-pointer"
-        >
+        <button onclick={resetToUpload} title="Back" class="cursor-pointer">
             <svg width="20" height="20" viewBox="0 0 24 24">
                 <path
                     d="M21 11H5.41l5.3-5.29a1 1 0 1 0-1.42-1.42l-7 7a1 1 0 0 0 0 1.42l7 7a1 1 0 0 0 1.42 0 1 1 0 0 0 0-1.42L5.41 13H21a1 1 0 0 0 0-2"
@@ -66,11 +64,7 @@
         <button class="flex items-center gap-2 cursor-pointer">
             <img src="avatar.png" alt="" class="w-8 h-8" />
             <p class="hidden sm:block text-lg font-medium">Madhur Rastogi</p>
-            <svg
-                class="hidden sm:block"
-                width="20"
-                viewBox="0 -6 524 524"
-            >
+            <svg class="hidden sm:block" width="20" viewBox="0 -6 524 524">
                 <path d="m64 191 34-34 164 163 164-163 34 34-198 196z" />
             </svg>
         </button>

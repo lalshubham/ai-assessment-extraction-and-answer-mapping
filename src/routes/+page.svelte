@@ -100,13 +100,25 @@
             currentScreen = mode === "full" ? "upload" : "results";
         }
     }
+
+    function resetToUpload() {
+        questionFiles = [];
+        answerFiles = [];
+        cachedQImages = [];
+        cachedAImages = [];
+        answerImages = [];
+        exam = null;
+        assessment = null;
+        errorMessage = null;
+        currentScreen = "upload";
+    }
 </script>
 
 <div class="w-full h-[100svh] p-3 lg:p-4 flex gap-4 overflow-hidden">
     <Sidebar bind:isMobileSidebarOpen bind:isSidebarCollapsed />
 
     <div class="min-h-0 min-w-0 flex-1 flex flex-col gap-4">
-        <Navbar bind:currentScreen bind:isMobileSidebarOpen />
+        <Navbar bind:currentScreen bind:isMobileSidebarOpen {resetToUpload} />
 
         <main
             class="flex-1 flex flex-col min-h-0 {currentScreen === 'results'
