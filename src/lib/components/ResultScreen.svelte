@@ -26,51 +26,27 @@
 </script>
 
 <div class="flex flex-col gap-4">
-    <div
-        class="flex flex-col md:flex-row items-center justify-between gap-4 border p-3 bg-white shrink-0"
-    >
-        <div class="text-gray-800 px-2 w-full md:w-auto text-center">
-            Assessment Complete
-        </div>
-        <div class="flex flex-wrap justify-center gap-2 w-full md:w-auto">
-            <button
-                onclick={onReset}
-                class="px-4 py-2 border bg-gray-50 hover:bg-gray-100 cursor-pointer text-sm"
-            >
-                Upload New
-            </button>
-            <button
-                onclick={onReExtract}
-                class="px-4 py-2 border bg-blue-50 text-blue-800 hover:bg-blue-100 cursor-pointer text-sm"
-            >
-                Re-Extract
-            </button>
-            <button
-                onclick={onReEvaluate}
-                class="px-4 py-2 border bg-black text-white hover:bg-gray-800 cursor-pointer text-sm"
-            >
-                Re-Evaluate
-            </button>
-        </div>
-    </div>
-
     {#if exam?.questions?.length}
-        <div class="flex md:hidden w-full p-1 border shrink-0">
+        <div
+            class="w-full p-1 flex md:hidden gap-1 shrink-0 bg-white rounded-4xl"
+        >
             <button
                 onclick={() => (activeTab = "questions")}
-                class="flex-1 py-2 text-sm {activeTab === 'questions'
-                    ? 'bg-black text-white'
+                class="py-2.5 flex-1 font-medium rounded-4xl transition-bg duration-200 cursor-pointer {activeTab ===
+                'questions'
+                    ? 'bg-[rgb(61,61,61)] hover:bg-black text-white shadow-lg'
                     : ''}"
             >
                 Questions
             </button>
             <button
                 onclick={() => (activeTab = "answers")}
-                class="flex-1 py-2 text-sm {activeTab === 'answers'
-                    ? 'bg-black text-white'
+                class="py-2.5 flex-1 font-medium rounded-4xl transition-bg duration-200 cursor-pointer {activeTab ===
+                'answers'
+                    ? 'bg-[rgb(61,61,61)] hover:bg-black text-white shadow-lg'
                     : ''}"
             >
-                Answer Sheets
+                Answer Sheet
             </button>
         </div>
 

@@ -115,7 +115,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					const awarded = Number(Math.min(rawAwarded, maxMarks).toFixed(2));
 
 					ev.score_awarded = awarded;
-					ev.score_string = `${awarded}/${maxMarks}`;
+					ev.score_string = `${awarded} / ${maxMarks}`;
 					finalTotalScore += awarded;
 				}
 			});

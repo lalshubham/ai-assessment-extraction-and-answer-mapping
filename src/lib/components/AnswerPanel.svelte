@@ -54,41 +54,41 @@
 </script>
 
 <div
-    class="relative flex flex-col w-full h-full border bg-gray-100 overflow-hidden"
+    class="relative flex flex-col w-full h-full bg-gray-100 rounded-2xl overflow-hidden"
 >
     <div
-        class="flex items-center justify-between gap-4 bg-[#2d2d2d] text-white p-2 border border-gray-600/50 text-sm"
+        class="p-3 flex items-center justify-between gap-4 bg-[#303030] text-white border border-gray-600/50 text-sm"
     >
-        <div class="flex items-center">
+        <div class="p-0.5 flex items-center bg-[#444444] rounded-lg">
             <button
                 onclick={() => changeZoom(-25)}
                 disabled={zoomLevel === 25}
-                class="disabled:opacity-30 px-2 text-xl"
+                class="px-2 text-2xl disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
             >
                 &minus;
             </button>
-            <span class="w-10 text-center">{zoomLevel}%</span>
+            <span class="w-10 font-medium text-center">{zoomLevel}%</span>
             <button
                 onclick={() => changeZoom(25)}
                 disabled={zoomLevel === 300}
-                class="disabled:opacity-30 px-2 text-xl"
+                class="px-2 text-2xl disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
             >
                 &plus;
             </button>
         </div>
-        <div class="flex items-center">
+        <div class="p-0.5 flex items-center bg-[#444444] rounded-lg">
             <button
                 onclick={() => changePage(-1)}
                 disabled={currentPage === 1}
-                class="disabled:opacity-30 px-2 text-xl"
+                class="px-2 text-2xl disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
             >
                 &lt;
             </button>
-            <span class="text-center">Page {currentPage} of {totalPages}</span>
+            <span class="w-20 font-medium text-center">Page {currentPage} of {totalPages}</span>
             <button
                 onclick={() => changePage(1)}
                 disabled={currentPage === totalPages}
-                class="disabled:opacity-30 px-2 text-xl"
+                class="px-2 text-2xl disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed"
             >
                 &gt;
             </button>
@@ -120,14 +120,14 @@
                         {#each assessment.evaluations as ev (ev.question_id)}
                             {#if (ev.page_index ?? 0) === index && ev.bounding_box && ev.bounding_box.length === 4 && ev.status !== "unanswered"}
                                 {@const [awarded, max] = (
-                                    ev.score_string || "0/1"
+                                    ev.score_string || "0 / 1"
                                 )
                                     .split("/")
                                     .map(Number)}
 
                                 <div
                                     id="box-{ev.question_id}"
-                                    class="absolute border-2 transition-colors duration-200 {activeQuestionId ===
+                                    class="absolute border-2 transition-colors duration-200 rounded-lg {activeQuestionId ===
                                     ev.question_id
                                         ? awarded === 0
                                             ? 'border-red-500 bg-red-500/20'
@@ -145,7 +145,7 @@
                                 >
                                     {#if activeQuestionId === ev.question_id}
                                         <span
-                                            class="absolute -top-[22px] -left-[2px] text-white px-2 py-0.5 text-xs {awarded ===
+                                            class="absolute -top-[22px] left-1 text-white px-2 py-0.5 text-xs rounded-t-lg {awarded ===
                                             0
                                                 ? 'bg-red-500'
                                                 : awarded < max

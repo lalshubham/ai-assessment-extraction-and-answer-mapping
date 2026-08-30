@@ -196,7 +196,7 @@
         </div>
 
         <div
-            class="max-w-3xl w-full sm:min-h-[210px] flex flex-col sm:flex-row gap-4 bg-[#f0f0f0] p-4 rounded-3xl"
+            class="p-4 max-w-3xl w-full sm:min-h-[210px] flex flex-col sm:flex-row gap-4 bg-[#f0f0f0] rounded-3xl"
         >
             <div
                 role="region"
