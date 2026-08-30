@@ -4,7 +4,14 @@ import type { ImageData } from '$lib/types';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-export default async function processFileToImages(file: File): Promise<ImageData[]> {
+export async function getPdfPageCount(file: File): Promise<number> {
+    if (file.type !== 'application/pdf') return 1;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    return pdf.numPages;
+}
+
+export async function processFileToImages(file: File): Promise<ImageData[]> {
     const JPEG_QUALITY = 0.85;
 
     if (file.type.startsWith('image/')) {

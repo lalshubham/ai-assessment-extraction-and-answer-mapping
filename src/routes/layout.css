@@ -1,1 +1,159 @@
 @import 'tailwindcss';
+
+@layer base {
+    body {
+        font-family: "Bricolage Grotesque", sans-serif;
+        font-optical-sizing: auto;
+        font-style: normal;
+        font-variation-settings: "wdth" 80;
+    }
+}
+
+.a {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.b {
+    position: relative;
+    width: 179px;
+    height: 179px;
+}
+
+.c {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: -1px;
+    width: 179px;
+    -webkit-backdrop-filter: blur(2.5px);
+    backdrop-filter: blur(2.5px);
+    background-color: #eadad4;
+    border-radius: 100%;
+}
+
+.d {
+    position: absolute;
+    top: 20px;
+    left: calc(50% - 70px);
+    width: 140px;
+    height: 140px;
+    background-color: #eeb6a5;
+    border-radius: 100%;
+}
+
+.e {
+    position: absolute;
+    top: 15px;
+    left: 39px;
+    width: 102px;
+    height: 125.5px;
+}
+
+.f {
+    position: absolute;
+    top: 24.5px;
+    left: 0;
+    width: 102px;
+    height: 101px;
+    background-color: #fff;
+    border-radius: 100%;
+}
+
+.g {
+    position: absolute;
+    top: 44.5px;
+    left: 32px;
+    width: 37.5px;
+    height: 55.5px;
+    background-color: #000;
+    filter: blur(13px);
+    border-radius: 100%;
+}
+
+.h {
+    width: 102px;
+    height: 125.5px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 68.5px;
+}
+
+.i {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: inherit;
+}
+
+.i img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.j {
+    position: absolute;
+    width: 140px;
+    height: 140px;
+    animation: spin 20s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.k {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(122deg, #f50 0%, #fc5e24 100%);
+    border: 1.2px solid #fff6;
+    border-radius: 100%;
+}
+
+.k:nth-child(1) {
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.k:nth-child(2) {
+    bottom: 0;
+    left: 50%;
+    transform: translate(-50%, 50%);
+}
+
+.k:nth-child(3) {
+    top: 50%;
+    left: 0;
+    transform: translate(-50%, -50%);
+}
+
+.k:nth-child(4) {
+    top: 50%;
+    right: 0;
+    transform: translate(50%, -50%);
+}
+
+.k svg {
+    width: 12px;
+    height: 12px;
+}

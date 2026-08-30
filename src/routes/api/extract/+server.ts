@@ -102,7 +102,8 @@ export const POST: RequestHandler = async ({ request }) => {
             }
 
             finalQuestions = parsedData.questions.map(q => {
-                calculatedTotalMarks += (q.marks || 0);
+                q.marks = Number((q.marks || 0).toFixed(2));
+                calculatedTotalMarks += q.marks;
                 delete q.marks_equation;
                 delete q.parent_total_marks;
                 return q as Question;

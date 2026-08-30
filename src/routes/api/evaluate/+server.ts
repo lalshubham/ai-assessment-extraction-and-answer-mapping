@@ -106,7 +106,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				const q = exam.questions.find(q => q.id === ev.question_id);
 				if (q?.marks !== undefined) {
 					const maxMarks = Number(q.marks);
-					const awarded = Math.min(Number(ev.score_awarded) || 0, maxMarks);
+					let rawAwarded = Number(ev.score_awarded) || 0;
+
+					if (rawAwarded === 0 && ev.feedback.trim().toLowerCase().startsWith('correct')) {
+						rawAwarded = maxMarks;
+					}
+
+					const awarded = Number(Math.min(rawAwarded, maxMarks).toFixed(2));
 
 					ev.score_awarded = awarded;
 					ev.score_string = `${awarded}/${maxMarks}`;

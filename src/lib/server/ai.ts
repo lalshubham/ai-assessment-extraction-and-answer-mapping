@@ -18,7 +18,14 @@ export default async function fetchAndParseAI<T>(
                 }
                 catch (error) {
                     const match = cleaned.match(/\{[\s\S]*\}/);
-                    if (match) return JSON.parse(match[0]) as T;
+                    if (match) {
+                        try {
+                            return JSON.parse(match[0]) as T;
+                        }
+                        catch (error) {
+                            throw new Error(`[${apiName}] AI output completely truncated.`, { cause: error });
+                        }
+                    }
                     throw new Error(`[${apiName}] AI output completely truncated.`, { cause: error });
                 }
             }
@@ -38,12 +45,13 @@ export default async function fetchAndParseAI<T>(
             };
 
             const isNetworkError = checkNetworkError(error);
+            const isParseError = error instanceof Error && error.message.includes('completely truncated');
 
-            if (i === retries || !isNetworkError) {
+            if (i === retries || (!isNetworkError && !isParseError)) {
                 throw error;
             }
 
-            console.warn(`[${apiName}] Network glitch detected. Retrying... (${i + 1}/${retries})`);
+            console.warn(`[${apiName}] Output glitch detected. Retrying... (${i + 1}/${retries})`);
             await new Promise((resolve) => setTimeout(resolve, 1000));
         }
     }
