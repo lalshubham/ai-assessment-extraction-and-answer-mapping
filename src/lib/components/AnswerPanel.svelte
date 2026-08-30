@@ -54,7 +54,7 @@
 </script>
 
 <div
-    class="relative flex flex-col bg-[#f0f0f0] rounded-2xl overflow-hidden"
+    class="h-full relative flex flex-col bg-[#f0f0f0] rounded-2xl overflow-hidden"
 >
     <div
         class="p-3 flex items-center justify-between gap-4 bg-[#303030] text-white border border-gray-600/50 text-sm"
@@ -84,7 +84,9 @@
             >
                 &lt;
             </button>
-            <span class="w-20 font-medium text-center">Page {currentPage} of {totalPages}</span>
+            <span class="w-20 font-medium text-center"
+                >Page {currentPage} of {totalPages}</span
+            >
             <button
                 onclick={() => changePage(1)}
                 disabled={currentPage === totalPages}

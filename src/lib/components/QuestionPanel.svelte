@@ -58,7 +58,7 @@
 </script>
 
 <div
-    class="p-4 md:p-6 flex flex-col gap-4 bg-[#f0f0f0] rounded-2xl overflow-y-auto"
+    class="h-full p-4 md:p-6 flex flex-col gap-4 bg-[#f0f0f0] rounded-2xl overflow-y-auto"
 >
     <div class="flex items-center justify-between">
         <h2 class="font-medium text-lg text-[#2b2b2b]">Extracted Questions</h2>
