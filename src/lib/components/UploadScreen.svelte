@@ -107,13 +107,13 @@
     }
 </script>
 
-<div class="py-6 w-full flex-1 flex flex-col items-center gap-5">
+<div class="pt-6 pb-10 w-full flex-1 flex flex-col items-center gap-5">
     <div class="max-w-[340px] sm:max-w-none flex flex-col items-center">
         <p
             class="mb-4 font-bold sm:font-semibold text-[23px] sm:text-3xl md:text-4xl leading-7.5 sm:leading-none text-[#2b2b2b] text-center"
         >
             <span>Upload</span>
-            <span class="sm:px-2 sm:bg-[#f4e4da] sm:text-[#ff440c] rounded-md">
+            <span class="sm:px-2 sm:bg-[#ecdeca] sm:text-[#ff5500] rounded-md">
                 Question Paper & Answer Sheets
             </span>
         </p>
@@ -193,12 +193,12 @@
     </div>
 
     <div
-        class="max-w-3xl w-full sm:min-h-[210px] flex flex-col sm:flex-row gap-4 bg-[#f4f4f4] p-4 rounded-3xl"
+        class="max-w-3xl w-full sm:min-h-[210px] flex flex-col sm:flex-row gap-4 bg-[#f0f0f0] p-4 rounded-3xl"
     >
         <div
             role="region"
             aria-label="Upload Question Paper Dropzone"
-            class="p-4 sm:p-6 relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {qDrag
+            class="p-6 relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {qDrag
                 ? 'border-orange-400 bg-orange-50'
                 : 'border-gray-300 bg-white'}"
             ondragover={(e) => {
