@@ -129,7 +129,7 @@
     }
 </script>
 
-<div class="relative pt-6 pb-10 h-full grid place-items-center">
+<div class="relative mt-6 h-full grid place-items-center">
     {#if errorMessage}
         <div
             class="p-4 absolute z-40 top-0 left-0 right-0 flex items-start justify-between gap-4 bg-red-100 text-red-600 border border-red-500"
@@ -232,12 +232,12 @@
         </div>
 
         <div
-            class="p-4 max-w-3xl w-full sm:min-h-[210px] flex flex-col sm:flex-row gap-4 bg-[#f0f0f0] rounded-3xl"
+            class="p-4 max-w-3xl w-full flex flex-col sm:flex-row gap-4 bg-[#f0f0f0] rounded-3xl"
         >
             <div
                 role="region"
                 aria-label="Upload Question Paper Dropzone"
-                class="p-6 relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {qDrag
+                class="p-6 min-h-[160px] md:min-h-[175px] relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {qDrag
                     ? 'border-orange-400 bg-orange-50'
                     : 'border-gray-300 bg-white'}"
                 ondragover={(e) => {
@@ -289,7 +289,7 @@
                         <div class="text-gray-400 text-sm mt-1">Max 10MB</div>
                     </div>
                 {:else}
-                    <div class="flex flex-col gap-3 w-full relative z-30">
+                    <div class="w-full relative z-30 flex flex-col gap-3">
                         {#each qMeta as meta (meta.id)}
                             <div
                                 class="flex items-center gap-4 bg-[#f6f6f6] border border-gray-100 rounded-xl p-3 relative"
@@ -329,7 +329,7 @@
 
                         {#if qLoading}
                             <div
-                                class="py-9 flex flex-col items-center justify-center font-medium text-lg text-gray-500"
+                                class="flex flex-col items-center justify-center font-medium text-lg text-gray-500"
                             >
                                 Processing...
                             </div>
@@ -341,7 +341,7 @@
             <div
                 role="region"
                 aria-label="Upload Answer Sheet Dropzone"
-                class="p-6 relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {aDrag
+                class="p-6 min-h-[160px] md:min-h-[175px] relative flex-1 flex-grow flex flex-col items-center justify-center border-2 border-dashed rounded-2xl transition-colors duration-200 {aDrag
                     ? 'border-orange-400 bg-orange-50'
                     : 'border-gray-300 bg-white'}"
                 ondragover={(e) => {
@@ -393,7 +393,7 @@
                         <div class="text-gray-400 text-sm mt-1">Max 10MB</div>
                     </div>
                 {:else}
-                    <div class="flex flex-col gap-3 w-full relative z-30">
+                    <div class="w-full relative z-30 flex flex-col gap-3">
                         {#each aMeta as meta (meta.id)}
                             <div
                                 class="flex items-center gap-4 bg-[#f6f6f6] border border-gray-100 rounded-xl p-3 relative"
@@ -433,7 +433,7 @@
 
                         {#if aLoading}
                             <div
-                                class="py-9 flex flex-col items-center justify-center font-medium text-lg text-gray-500"
+                                class="flex flex-col items-center justify-center font-medium text-lg text-gray-500"
                             >
                                 Processing...
                             </div>

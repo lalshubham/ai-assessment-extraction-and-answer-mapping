@@ -102,6 +102,7 @@
     }
 
     function resetToUpload() {
+        if (currentScreen === "upload") return;
         questionFiles = [];
         answerFiles = [];
         cachedQImages = [];
@@ -121,7 +122,8 @@
         <Navbar bind:currentScreen bind:isMobileSidebarOpen {resetToUpload} />
 
         <main
-            class="flex-1 flex flex-col min-h-0 {currentScreen === 'results'
+            class="flex-1 flex flex-col min-h-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden {currentScreen ===
+            'results'
                 ? 'overflow-hidden'
                 : 'overflow-y-auto'}"
         >
