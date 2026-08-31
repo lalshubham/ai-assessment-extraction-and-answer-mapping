@@ -24,7 +24,7 @@
         if (!id) return;
 
         tick().then(() => {
-            const element = document.getElementById(`box-${id}`);
+            const element = document.getElementById(`box-${id}-0`);
             if (element && element.offsetParent !== null) {
                 element.scrollIntoView({ behavior: "smooth", block: "center" });
             }
@@ -137,44 +137,55 @@
 
                     {#if assessment?.evaluations}
                         {#each assessment.evaluations as ev (ev.question_id)}
-                            {#if (ev.page_index ?? 0) === index && ev.bounding_box && ev.bounding_box.length === 4 && ev.status !== "unanswered"}
+                            {#if ev.status !== "unanswered" && ev.regions && ev.regions.length > 0}
                                 {@const [awarded, max] = (
                                     ev.score_string || "0 / 1"
                                 )
                                     .split("/")
                                     .map(Number)}
 
-                                <div
-                                    id="box-{ev.question_id}"
-                                    class="absolute border-2 transition-colors duration-200 rounded-lg {activeQuestionId ===
-                                    ev.question_id
-                                        ? awarded === 0
-                                            ? 'border-red-500 bg-red-500/20'
-                                            : awarded < max
-                                              ? 'border-orange-500 bg-orange-500/20'
-                                              : 'border-green-500 bg-green-500/20'
-                                        : 'border-blue-400/50 bg-blue-400/10 hover:bg-blue-400/20'}"
-                                    style="top: {ev.bounding_box[0] /
-                                        10}%; left: {ev.bounding_box[1] /
-                                        10}%; width: {(ev.bounding_box[3] -
-                                        ev.bounding_box[1]) /
-                                        10}%; height: {(ev.bounding_box[2] -
-                                        ev.bounding_box[0]) /
-                                        10}%;"
-                                >
-                                    {#if activeQuestionId === ev.question_id}
-                                        <span
-                                            class="absolute -top-[22px] left-1 text-white px-2 py-0.5 text-xs rounded-t-lg {awarded ===
-                                            0
-                                                ? 'bg-red-500'
-                                                : awarded < max
-                                                  ? 'bg-orange-500'
-                                                  : 'bg-green-500'}"
+                                {#each ev.regions as region, rIndex (rIndex)}
+                                    {#if region.page_index === index && region.bounding_box && region.bounding_box.length === 4}
+                                        <div
+                                            id="box-{ev.question_id}-{rIndex}"
+                                            class="absolute border-2 transition-colors duration-200 rounded-lg {activeQuestionId ===
+                                            ev.question_id
+                                                ? awarded === 0
+                                                    ? 'border-red-500 bg-red-500/20'
+                                                    : awarded < max
+                                                      ? 'border-orange-500 bg-orange-500/20'
+                                                      : 'border-green-500 bg-green-500/20'
+                                                : 'border-blue-400/50 bg-blue-400/10 hover:bg-blue-400/20'}"
+                                            style="top: {region
+                                                .bounding_box[0] /
+                                                10}%; left: {region
+                                                .bounding_box[1] /
+                                                10}%; width: {(region
+                                                .bounding_box[3] -
+                                                region.bounding_box[1]) /
+                                                10}%; height: {(region
+                                                .bounding_box[2] -
+                                                region.bounding_box[0]) /
+                                                10}%;"
                                         >
-                                            Q{ev.question_id}
-                                        </span>
+                                            {#if activeQuestionId === ev.question_id}
+                                                <span
+                                                    class="absolute -top-[22px] left-1 text-white px-2 py-0.5 text-xs rounded-t-lg whitespace-nowrap {awarded ===
+                                                    0
+                                                        ? 'bg-red-500'
+                                                        : awarded < max
+                                                          ? 'bg-orange-500'
+                                                          : 'bg-green-500'}"
+                                                >
+                                                    Q{ev.question_id}
+                                                    {ev.regions.length > 1
+                                                        ? `(Pt. ${rIndex + 1})`
+                                                        : ""}
+                                                </span>
+                                            {/if}
+                                        </div>
                                     {/if}
-                                </div>
+                                {/each}
                             {/if}
                         {/each}
                     {/if}

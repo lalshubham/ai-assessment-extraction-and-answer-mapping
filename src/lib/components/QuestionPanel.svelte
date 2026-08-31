@@ -77,7 +77,8 @@
 
         {@const idMatch = q.id.trim().match(/^(\d+)(.*)$/)}
         {@const mainId = idMatch ? idMatch[1] : q.id.trim()}
-        {@const subId = idMatch ? idMatch[2] : ""}
+        {@const rawSubId = idMatch ? idMatch[2] : ""}
+        {@const subId = rawSubId.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "")}
 
         <button
             type="button"

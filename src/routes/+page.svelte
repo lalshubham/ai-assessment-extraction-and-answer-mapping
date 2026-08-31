@@ -17,7 +17,7 @@
     let isSidebarCollapsed = $state(false);
 
     let currentScreen = $state<ScreenStage>("upload");
-    let loadingStage = $state<LoadingStage>("uploading");
+    let loadingStage = $state<LoadingStage>("processing");
     let errorMessage = $state<string | null>(null);
 
     let questionFiles = $state<File[]>([]);
@@ -42,7 +42,7 @@
 
         try {
             if (mode === "full" || cachedAImages.length === 0) {
-                loadingStage = "uploading";
+                loadingStage = "processing";
 
                 const qImageArrays = await Promise.all(
                     questionFiles.map(processFileToImages),

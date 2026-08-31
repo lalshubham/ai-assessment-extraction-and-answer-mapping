@@ -5,7 +5,7 @@
     let currentIndex = $state(0);
 
     const loadingMessages: Record<LoadingStage, string[]> = {
-        uploading: [
+        processing: [
             "Preparing uploaded file",
             "Converting files into image",
         ],

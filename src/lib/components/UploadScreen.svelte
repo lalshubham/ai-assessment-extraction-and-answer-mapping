@@ -328,11 +328,11 @@
                         {/each}
 
                         {#if qLoading}
-                            <div
-                                class="flex flex-col items-center justify-center font-medium text-lg text-gray-500"
+                            <p
+                                class="font-medium text-sm text-center text-gray-500"
                             >
-                                Processing...
-                            </div>
+                                Fetching file info...
+                            </p>
                         {/if}
                     </div>
                 {/if}
@@ -432,11 +432,11 @@
                         {/each}
 
                         {#if aLoading}
-                            <div
-                                class="flex flex-col items-center justify-center font-medium text-lg text-gray-500"
+                            <p
+                                class="font-medium text-sm text-center text-gray-500"
                             >
-                                Processing...
-                            </div>
+                                Fetching file info...
+                            </p>
                         {/if}
                     </div>
                 {/if}

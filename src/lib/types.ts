@@ -1,6 +1,6 @@
 export type ScreenStage = 'upload' | 'loading' | 'results';
 
-export type LoadingStage = 'uploading' | 'extracting' | 'evaluating';
+export type LoadingStage = 'processing' | 'extracting' | 'evaluating';
 
 export type ResultStage = 'questions' | 'answers';
 
@@ -32,14 +32,18 @@ export type Exam = {
     questions: Question[];
 };
 
+export type AnswerRegion = {
+    page_index: number;
+    bounding_box: [number, number, number, number];
+};
+
 export type Evaluation = {
     question_id: string;
     status: 'answered' | 'unanswered';
     score_awarded: number;
     score_string: string;
     feedback: string;
-    page_index: number;
-    bounding_box: [number, number, number, number];
+    regions: AnswerRegion[]; 
 };
 
 export type Assessment = {

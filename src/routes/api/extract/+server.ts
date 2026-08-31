@@ -15,11 +15,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
         if (!files.length) return json({ error: 'Invalid input payload' }, { status: 400 });
 
-        const parts: GeminiContent[] = await Promise.all(files.map(async file => ({
+        const contents: GeminiContent[] = await Promise.all(files.map(async file => ({
             inlineData: { data: Buffer.from(await file.arrayBuffer()).toString('base64'), mimeType: file.type || 'image/jpeg' }
         })));
 
-        parts.push({
+        contents.push({
             text: `Analyze this QUESTION PAPER image carefully.
             1. Extract class/grade level, subject, and the explicitly printed overall maximum/total marks for the entire paper (e.g., "Max. Marks: 50").
             2. Extract all questions in their exact printed order.
@@ -29,10 +29,15 @@ export const POST: RequestHandler = async ({ request }) => {
             6. Extract MCQ options into an array if present. CRITICAL: You MUST include the option labels (e.g., "a)", "b)", "c)", "i)", "ii)") along with the option text in each string.`
         });
 
-        const parsedData = await fetchAndParseAI<{ grade_level: string; subject: string; total_marks: number; questions: RawQuestion[] }>(
-            () => ai.models.generateContent({
-                model: 'gemini-3.5-flash-lite',
-                contents: parts,
+        const parsedData = await fetchAndParseAI<{
+            grade_level: string;
+            subject: string;
+            total_marks: number;
+            questions: RawQuestion[]
+        }>((model) =>
+            ai.models.generateContent({
+                model,
+                contents,
                 config: {
                     maxOutputTokens: 8192,
                     responseMimeType: 'application/json',
