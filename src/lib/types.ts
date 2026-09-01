@@ -4,11 +4,6 @@ export type LoadingStage = 'processing' | 'extracting' | 'evaluating';
 
 export type ResultStage = 'questions' | 'answers';
 
-export type ImageData = {
-    blob: Blob;
-    dataUrl: string
-};
-
 export type GeminiContent = {
     text: string;
 } | {
@@ -43,7 +38,7 @@ export type Evaluation = {
     score_awarded: number;
     score_string: string;
     feedback: string;
-    regions: AnswerRegion[]; 
+    regions: AnswerRegion[];
 };
 
 export type Assessment = {

@@ -26,7 +26,8 @@ export const POST: RequestHandler = async ({ request }) => {
             3. Treat labeled sub-parts as distinct questions. CRITICAL: Ensure the 'id' always starts with the main question number (e.g., "11a", "11b", NOT just "a" or "b").
             4. For the 'marks' field, extract a simple number. CRITICAL FOR SUB-PARTS: If a parent question has a single total mark provided (e.g., "four marks each"), extract it into 'parent_total_marks' for EVERY sub-part. Do NOT divide the marks yourself.
             5. CRITICAL - SECTION HEADERS: Look at the heading for each section (e.g., "Answer the following"). These headings often contain a marks multiplier equation like "5 x 2", "3x5", or "(5x3=15)". You MUST extract this exact literal string and put it into the 'marks_equation' field for EVERY question that belongs to that section. If there is no multiplier, leave empty.
-            6. Extract MCQ options into an array if present. CRITICAL: You MUST include the option labels (e.g., "a)", "b)", "c)", "i)", "ii)") along with the option text in each string.`
+            6. CRITICAL - EXCLUDE HEADERS: NEVER extract instructional text, section titles, or group headers (e.g., "A. Choose the correct option:", "Section II", "Fill in the blanks") as standalone questions. ONLY extract actual answerable questions.
+            7. Extract MCQ options into an array if present. CRITICAL: You MUST include the option labels (e.g., "a)", "b)", "c)", "i)", "ii)") along with the option text in each string.`
         });
 
         const parsedData = await fetchAndParseAI<{
@@ -76,7 +77,6 @@ export const POST: RequestHandler = async ({ request }) => {
             2, 'Extraction API'
         );
 
-        let finalQuestions: Question[] = [];
         let calculatedTotalMarks = 0;
 
         if (parsedData?.questions?.length) {
@@ -106,12 +106,11 @@ export const POST: RequestHandler = async ({ request }) => {
                 if (subQs.length > 1 && pMark != null) subQs.forEach(q => q.marks = pMark / subQs.length);
             }
 
-            finalQuestions = parsedData.questions.map(q => {
+            parsedData.questions.forEach(q => {
                 q.marks = Number((q.marks || 0).toFixed(2));
                 calculatedTotalMarks += q.marks;
                 delete q.marks_equation;
                 delete q.parent_total_marks;
-                return q as Question;
             });
         }
 
@@ -121,7 +120,7 @@ export const POST: RequestHandler = async ({ request }) => {
             grade_level: parsedData?.grade_level || "",
             subject: parsedData?.subject || "",
             total_marks: Number(finalTotalMarks.toFixed(2)),
-            questions: finalQuestions
+            questions: (parsedData?.questions as Question[]) || []
         };
 
         return json(examResult);

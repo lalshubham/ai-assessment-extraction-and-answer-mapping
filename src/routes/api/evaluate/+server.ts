@@ -4,6 +4,8 @@ import { type RequestHandler, json } from '@sveltejs/kit';
 import type { Exam, GeminiContent, Evaluation, Assessment } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
 
+type RawEvaluation = Evaluation & { pages_found_on?: number[], transcribed_text?: string };
+
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -18,9 +20,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const exam = JSON.parse(examStr) as Exam;
 
-		const contents: GeminiContent[] = await Promise.all(files.map(async file => ({
-			inlineData: { data: Buffer.from(await file.arrayBuffer()).toString('base64'), mimeType: file.type || 'image/jpeg' }
-		})));
+		const contents: GeminiContent[] = (await Promise.all(files.map(async (file, index) => [
+			{ text: `--- START OF IMAGE PAGE INDEX: ${index} ---` },
+			{ inlineData: { data: Buffer.from(await file.arrayBuffer()).toString('base64'), mimeType: file.type || 'image/jpeg' } }
+		]))).flat();
 
 		contents.push({
 			text: `You are an expert ${exam.subject || 'school'} teacher for ${exam.grade_level || 'students'}.
@@ -30,9 +33,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
             For each question in the JSON:
             1. Evaluate step-by-step.
-               - MAPPING RULE: Match the student's handwritten question numbers directly to the JSON IDs. Even if the student's answer is completely irrelevant, off-topic, or answers a different question, you MUST map it, draw the bounding box, evaluate it (give 0 marks if irrelevant), and provide feedback. Do NOT ignore it.
-               - TRANSCRIPTION RULE: First, carefully read the student's exact handwritten answer. Do not hallucinate words.
-               - MCQ RULE: Compare the student's handwritten answer EXACTLY to the options. If the student wrote the correct option letter, the correct text, or both, YOU MUST AWARD FULL MARKS immediately.
+               - EXHAUSTIVE SEARCH RULE (CRITICAL): Scan EVERY image for the question ID. Students often rewrite, cross out, or continue answers on different pages. You MUST find EVERY occurrence of the question number and list the page indices in the 'pages_found_on' array BEFORE evaluating.
+               - TRANSCRIPTION RULE: Accurately transcribe the exact literal text the student wrote. If the answer appears on multiple pages, transcribe and combine the text from ALL occurrences into the 'transcribed_text' field. Do not hallucinate.
+               - MCQ RULE: Compare your 'transcribed_text' EXACTLY to the options. If the student wrote the correct option letter, the correct text, or both, YOU MUST AWARD FULL MARKS immediately.
                - NON-MCQ RULE: Formulate the standard academic answer for the provided grade level. If the student's answer is conceptually correct, YOU MUST AWARD FULL MARKS. Deduct marks ONLY for missing or vague terminology.
             2. Assign a numeric 'score_awarded'. CRITICAL: If the answer is correct, this MUST equal the exact 'marks' value provided for this question in the JSON.
             3. Assign 'score_string' containing ONLY the fraction. The denominator MUST be the exact 'marks' value provided for this specific question in the JSON.
@@ -41,15 +44,14 @@ export const POST: RequestHandler = async ({ request }) => {
                - If full marks are awarded, MUST start with 'Correct.' followed by a brief, 1-sentence validation of what the student wrote (e.g., 'Correct. You accurately explained the process.'). For MCQs, state 'Correct. Option X is the right answer.'
                - If marks are deducted, clearly explain what was incorrect or missing based on what was ACTUALLY written.
             5. Provide precise bounding boxes for the answer using the 'regions' array on a 0-1000 scale.
-               - MULTI-PAGE RULE: If a student's answer spans across multiple pages, you MUST create a separate region object in the array for EACH page the answer appears on.
-               - RULE 1 (Left Edge): xmin MUST expand into the left margin to perfectly enclose the handwritten question identifier. Treat the margin identifier and the main paragraph as a single connected block.
-               - RULE 2 (Right Edge): Scan every line of the student's answer. Push xmax past the absolute furthest word on the right so no trailing letters are cut off. Over-estimate slightly to be safe.
-               - RULE 3 (Top & Bottom): Capture ALL text lines, paragraphs, diagrams, and labels belonging to this question. CRITICAL: Push ymax safely past the absolute lowest point of the final line of the answer to ensure no trailing sentences are cut off. Stop immediately before the next question begins. Exclude printed section headers.
+               - MULTI-PAGE REQUIREMENT: For EVERY page index you listed in 'pages_found_on', you MUST create a corresponding region object in this array. If a question is answered on Page 2 and continued on Page 3, you MUST output TWO region objects.
+               - RULE 1 (Horizontal - xmin/xmax): Add generous padding (15-20 units) to the left and right. xmin MUST enclose the handwritten question identifier. xmax MUST safely clear the absolute furthest word on the right so trailing letters are not cut off.
+               - RULE 2 (Vertical - ymin/ymax - CRITICAL): For closely written lines on a page, DO NOT add excessive vertical padding. ymin MUST start just above the student's answer, and ymax MUST stop STRICTLY BEFORE the text of the next question or section header begins. Do NOT let the bounding box bleed into or overlap with adjacent answers above or below it.
             6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.`
 		});
 
 		const parsedData = await fetchAndParseAI<{
-			evaluations: Evaluation[]
+			evaluations: RawEvaluation[]
 		}>((model) =>
 			ai.models.generateContent({
 				model,
@@ -70,6 +72,15 @@ export const POST: RequestHandler = async ({ request }) => {
 											type: Type.STRING,
 											description: "'answered' or 'unanswered'"
 										},
+										pages_found_on: {
+											type: Type.ARRAY,
+											description: 'CRITICAL: Scan ALL images and list EVERY page index (e.g., 0, 1, 2) where this question number is explicitly written. Do this BEFORE transcribing.',
+											items: { type: Type.INTEGER }
+										},
+										transcribed_text: {
+											type: Type.STRING,
+											description: 'CRITICAL: The exact literal text the student wrote. If scattered across multiple pages, combine all text from all occurrences here.'
+										},
 										score_awarded: { type: Type.NUMBER },
 										score_string: {
 											type: Type.STRING,
@@ -81,25 +92,25 @@ export const POST: RequestHandler = async ({ request }) => {
 										},
 										regions: {
 											type: Type.ARRAY,
-											description: 'Array of regions covering the answer. Use multiple items if the answer spans multiple pages.',
+											description: 'Array of regions covering the answer. CRITICAL: You MUST output a region object for EVERY page index you listed in pages_found_on.',
 											items: {
 												type: Type.OBJECT,
 												properties: {
 													page_index: {
 														type: Type.INTEGER,
-														description: 'CRITICAL: 0-indexed page number (first page is 0).'
+														description: 'CRITICAL: The exact integer from the "--- START OF IMAGE PAGE INDEX: X ---" marker preceding the image. NEVER use handwritten page numbers.'
 													},
 													bounding_box: {
 														type: Type.ARRAY,
 														items: { type: Type.INTEGER },
-														description: '[ymin, xmin, ymax, xmax]. Push xmax to the right and ymax safely to the bottom to prevent clipping trailing lines.'
+														description: '[ymin, xmin, ymax, xmax]. CRITICAL: Generous X-axis padding (left/right). Tight Y-axis bounds (top/bottom) to NEVER overlap adjacent lines.'
 													}
 												},
 												required: ['page_index', 'bounding_box']
 											}
 										}
 									},
-									required: ['question_id', 'status', 'score_string', 'feedback', 'regions']
+									required: ['question_id', 'status', 'pages_found_on', 'transcribed_text', 'score_string', 'feedback', 'regions']
 								}
 							}
 						},
@@ -131,12 +142,15 @@ export const POST: RequestHandler = async ({ request }) => {
 					ev.score_string = `${awarded} / ${maxMarks}`;
 					finalTotalScore += awarded;
 				}
+
+				delete ev.pages_found_on;
+				delete ev.transcribed_text;
 			});
 		}
 
 		const assessmentResult: Assessment = {
 			total_score: Number(finalTotalScore.toFixed(2)),
-			evaluations: parsedData?.evaluations || []
+			evaluations: (parsedData?.evaluations as Evaluation[]) || []
 		};
 
 		return json(assessmentResult);

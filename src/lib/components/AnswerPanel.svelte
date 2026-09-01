@@ -170,7 +170,7 @@
                                         >
                                             {#if activeQuestionId === ev.question_id}
                                                 <span
-                                                    class="absolute -top-[22px] left-1 text-white px-2 py-0.5 text-xs rounded-t-lg whitespace-nowrap {awarded ===
+                                                    class="absolute -top-[24px] left-1 text-white px-2 py-0.5 text-sm rounded-t-lg {awarded ===
                                                     0
                                                         ? 'bg-red-500'
                                                         : awarded < max
@@ -179,7 +179,7 @@
                                                 >
                                                     Q{ev.question_id}
                                                     {ev.regions.length > 1
-                                                        ? `(Pt. ${rIndex + 1})`
+                                                        ? `- Part ${rIndex + 1}`
                                                         : ""}
                                                 </span>
                                             {/if}

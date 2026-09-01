@@ -2,7 +2,6 @@
     import type {
         ScreenStage,
         LoadingStage,
-        ImageData,
         Exam,
         Assessment,
     } from "$lib/types";
@@ -23,62 +22,55 @@
     let questionFiles = $state<File[]>([]);
     let answerFiles = $state<File[]>([]);
 
-    let cachedQImages = $state<ImageData[]>([]);
-    let cachedAImages = $state<ImageData[]>([]);
     let answerImages = $state<string[]>([]);
 
     let exam = $state<Exam | null>(null);
     let assessment = $state<Assessment | null>(null);
 
-    async function runPipeline(mode: "full" | "re-extract" | "re-evaluate") {
+    async function runPipeline() {
         isSidebarCollapsed = true;
         currentScreen = "loading";
         errorMessage = null;
 
-        if (mode !== "re-evaluate") {
-            exam = null;
-            assessment = null;
-        }
+        exam = null;
+        assessment = null;
+        answerImages = [];
 
         try {
-            if (mode === "full" || cachedAImages.length === 0) {
-                loadingStage = "processing";
+            loadingStage = "processing";
+            const qImageArrays = await Promise.all(
+                questionFiles.map(processFileToImages),
+            );
+            const aImageArrays = await Promise.all(
+                answerFiles.map(processFileToImages),
+            );
 
-                const qImageArrays = await Promise.all(
-                    questionFiles.map(processFileToImages),
+            const processedQImages = qImageArrays.flat();
+            const processedAImages = aImageArrays.flat();
+
+            answerImages = processedAImages.map((img) => img.dataUrl);
+
+            loadingStage = "extracting";
+            const qFormData = new FormData();
+            processedQImages.forEach((img, index) =>
+                qFormData.append("images", img.blob, `q_page_${index}.jpg`),
+            );
+
+            const qRes = await fetch("/api/extract", {
+                method: "POST",
+                body: qFormData,
+            });
+
+            if (!qRes.ok)
+                throw new Error(
+                    (await qRes.json()).error || "Extraction failed.",
                 );
-                const aImageArrays = await Promise.all(
-                    answerFiles.map(processFileToImages),
-                );
-
-                cachedQImages = qImageArrays.flat();
-                cachedAImages = aImageArrays.flat();
-                answerImages = cachedAImages.map((img) => img.dataUrl);
-            }
-
-            if (mode === "full" || mode === "re-extract") {
-                loadingStage = "extracting";
-                const qFormData = new FormData();
-                cachedQImages.forEach((img, index) =>
-                    qFormData.append("images", img.blob, `q_page_${index}.jpg`),
-                );
-
-                const qRes = await fetch("/api/extract", {
-                    method: "POST",
-                    body: qFormData,
-                });
-
-                if (!qRes.ok)
-                    throw new Error(
-                        (await qRes.json()).error || "Extraction failed.",
-                    );
-                exam = await qRes.json();
-            }
+            exam = await qRes.json();
 
             loadingStage = "evaluating";
             const aFormData = new FormData();
             aFormData.append("exam", JSON.stringify(exam));
-            cachedAImages.forEach((img, index) =>
+            processedAImages.forEach((img, index) =>
                 aFormData.append("images", img.blob, `a_page_${index}.jpg`),
             );
 
@@ -98,7 +90,13 @@
             console.error(error);
             errorMessage =
                 error instanceof Error ? error.message : "Processing failed.";
-            currentScreen = mode === "full" ? "upload" : "results";
+
+            exam = null;
+            assessment = null;
+            answerImages = [];
+
+            currentScreen = "upload";
+            isSidebarCollapsed = false;
         }
     }
 
@@ -106,8 +104,6 @@
         if (currentScreen === "upload") return;
         questionFiles = [];
         answerFiles = [];
-        cachedQImages = [];
-        cachedAImages = [];
         answerImages = [];
         exam = null;
         assessment = null;
@@ -134,7 +130,7 @@
                     bind:questionFiles
                     bind:answerFiles
                     bind:errorMessage
-                    onStart={() => runPipeline("full")}
+                    onStart={runPipeline}
                 />
             {:else if currentScreen === "loading"}
                 <LoadingScreen stage={loadingStage} />

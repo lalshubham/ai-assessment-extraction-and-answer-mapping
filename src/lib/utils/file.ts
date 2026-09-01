@@ -1,8 +1,11 @@
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
-import type { ImageData } from '$lib/types';
-
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+
+type ImageData = {
+    blob: Blob;
+    dataUrl: string
+};
 
 export async function getPdfPageCount(file: File): Promise<number> {
     if (file.type !== 'application/pdf') return 1;
