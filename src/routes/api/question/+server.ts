@@ -1,10 +1,8 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '$env/dynamic/private';
 import { json, type RequestHandler } from '@sveltejs/kit';
-import type { Question, GeminiContent, Exam } from '$lib/types';
+import type { GeminiContent, Question, QuestionItem } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
-
-type RawQuestion = Question & { marks_equation?: string; parent_total_marks?: number };
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
@@ -30,12 +28,7 @@ export const POST: RequestHandler = async ({ request }) => {
             7. Extract MCQ options into an array if present. CRITICAL: You MUST include the option labels (e.g., "a)", "b)", "c)", "i)", "ii)") along with the option text in each string.`
         });
 
-        const parsedData = await fetchAndParseAI<{
-            grade_level: string;
-            subject: string;
-            total_marks: number;
-            questions: RawQuestion[]
-        }>((model) =>
+        const parsedData = await fetchAndParseAI<Question>((model) =>
             ai.models.generateContent({
                 model,
                 contents,
@@ -51,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
                                 type: Type.NUMBER,
                                 description: "The explicit overall maximum marks printed at the top of the paper (e.g., 50, 80)."
                             },
-                            questions: {
+                            items: {
                                 type: Type.ARRAY,
                                 items: {
                                     type: Type.OBJECT,
@@ -70,20 +63,20 @@ export const POST: RequestHandler = async ({ request }) => {
                                 }
                             }
                         },
-                        required: ['grade_level', 'subject', 'questions']
+                        required: ['grade_level', 'subject', 'items']
                     }
                 }
             }),
-            2, 'Extraction API'
+            2, 'Question API'
         );
 
         let calculatedTotalMarks = 0;
 
-        if (parsedData?.questions?.length) {
-            const questionsByParentId: Record<string, RawQuestion[]> = {};
+        if (parsedData?.items?.length) {
+            const questionsByParentId: Record<string, QuestionItem[]> = {};
             const sectionEquationsMap: Record<string, Set<string>> = {};
 
-            parsedData.questions.forEach((q) => {
+            parsedData.items.forEach((q) => {
                 const parentId = q.id.match(/^\d+/)?.[0] || q.id;
                 (questionsByParentId[parentId] ??= []).push(q);
 
@@ -106,28 +99,26 @@ export const POST: RequestHandler = async ({ request }) => {
                 if (subQs.length > 1 && pMark != null) subQs.forEach(q => q.marks = pMark / subQs.length);
             }
 
-            parsedData.questions.forEach(q => {
+            parsedData.items.forEach(q => {
                 q.marks = Number((q.marks || 0).toFixed(2));
                 calculatedTotalMarks += q.marks;
-                delete q.marks_equation;
-                delete q.parent_total_marks;
             });
         }
 
         const finalTotalMarks = parsedData?.total_marks || calculatedTotalMarks;
 
-        const examResult: Exam = {
+        const questionResult: Question = {
             grade_level: parsedData?.grade_level || "",
             subject: parsedData?.subject || "",
             total_marks: Number(finalTotalMarks.toFixed(2)),
-            questions: (parsedData?.questions as Question[]) || []
+            items: parsedData?.items || []
         };
 
-        return json(examResult);
+        return json(questionResult);
     }
     catch (error: unknown) {
-        console.error('Extraction Error:', error);
-        const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on extraction.' : 'Failed to extract questions.';
+        console.error('Question API Error:', error);
+        const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on question parsing.' : 'Failed to extract questions.';
         return json({ error: msg }, { status: 500 });
     }
 };

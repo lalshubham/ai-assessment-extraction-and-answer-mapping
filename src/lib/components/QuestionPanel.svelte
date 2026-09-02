@@ -1,14 +1,18 @@
 <script lang="ts">
     import { SvelteSet } from "svelte/reactivity";
-    import type { Exam, Assessment } from "$lib/types";
+    import type { Question, Answer } from "$lib/types";
 
     interface Props {
-        exam: Exam;
-        assessment: Assessment | null;
+        questionData: Question;
+        answerData: Answer | null;
         activeQuestionId: string | null;
     }
 
-    let { exam, assessment, activeQuestionId = $bindable() }: Props = $props();
+    let {
+        questionData,
+        answerData,
+        activeQuestionId = $bindable(),
+    }: Props = $props();
 
     let expanded = new SvelteSet<string>();
     let anyExpanded = $derived(expanded.size > 0);
@@ -17,13 +21,13 @@
         if (anyExpanded) {
             expanded.clear();
         } else {
-            exam.questions.forEach((q) => {
-                const ev = assessment?.evaluations?.find(
-                    (e) => e.question_id === q.id,
+            questionData.items.forEach((q) => {
+                const ans = answerData?.items?.find(
+                    (a) => a.question_id === q.id,
                 );
-                const isAttempted = ev && ev.status !== "unanswered";
+                const isAttempted = ans && ans.status !== "unanswered";
 
-                if (isAttempted && ev?.feedback) {
+                if (isAttempted && ans?.feedback) {
                     expanded.add(q.id);
                 }
             });
@@ -31,12 +35,12 @@
     }
 
     function toggleQuestion(id: string) {
-        const ev = assessment?.evaluations?.find((e) => e.question_id === id);
-        const isAttempted = ev && ev.status !== "unanswered";
+        const ans = answerData?.items?.find((a) => a.question_id === id);
+        const isAttempted = ans && ans.status !== "unanswered";
 
         if (!isAttempted) return;
 
-        const hasFeedback = !!ev?.feedback;
+        const hasFeedback = !!ans?.feedback;
 
         if (activeQuestionId === id) {
             activeQuestionId = null;
@@ -65,12 +69,10 @@
         </button>
     </div>
 
-    {#each exam.questions as q (q.id)}
-        {@const ev = assessment?.evaluations?.find(
-            (e) => e.question_id === q.id,
-        )}
+    {#each questionData.items as q (q.id)}
+        {@const ans = answerData?.items?.find((a) => a.question_id === q.id)}
 
-        {@const isAttempted = ev && ev.status !== "unanswered"}
+        {@const isAttempted = ans && ans.status !== "unanswered"}
 
         {@const isExpanded = expanded.has(q.id)}
         {@const isActive = activeQuestionId === q.id}
@@ -124,18 +126,18 @@
                         </span>
                     {:else}
                         <span
-                            class="py-1 px-3 font-bold text-sm rounded-full {ev.score_awarded ===
+                            class="py-1 px-3 font-bold text-sm rounded-full {ans.score_awarded ===
                             0
                                 ? 'text-red-600 bg-red-100'
-                                : ev.score_awarded < q.marks
+                                : ans.score_awarded < q.marks
                                   ? 'text-orange-600 bg-orange-100'
                                   : 'text-green-700 bg-green-100'}"
                         >
-                            {ev.score_string}
+                            {ans.score_string}
                         </span>
                     {/if}
 
-                    {#if ev?.feedback && isAttempted}
+                    {#if ans?.feedback && isAttempted}
                         <div
                             class="w-8 h-8 flex items-center justify-center rounded-lg bg-[#f5f5f5] text-gray-600"
                         >
@@ -172,13 +174,13 @@
                 </div>
             {/if}
 
-            {#if isExpanded && ev?.feedback}
+            {#if isExpanded && ans?.feedback}
                 <div class="p-4 rounded-xl bg-[#f8f9fa]">
                     <p class="font-bold text-[13px] text-gray-800 mb-1.5">
                         AI Feedback
                     </p>
                     <p class="text-[14px] text-gray-700 leading-relaxed">
-                        {ev.feedback}
+                        {ans.feedback}
                     </p>
                 </div>
             {/if}

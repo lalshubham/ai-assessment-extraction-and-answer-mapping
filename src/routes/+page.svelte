@@ -2,8 +2,8 @@
     import type {
         ScreenStage,
         LoadingStage,
-        Exam,
-        Assessment,
+        Question,
+        Answer,
     } from "$lib/types";
     import { processFileToImages } from "$lib/utils/file";
     import Sidebar from "$lib/components/Sidebar.svelte";
@@ -24,16 +24,16 @@
 
     let answerImages = $state<string[]>([]);
 
-    let exam = $state<Exam | null>(null);
-    let assessment = $state<Assessment | null>(null);
+    let questionData = $state<Question | null>(null);
+    let answerData = $state<Answer | null>(null);
 
     async function runPipeline() {
         isSidebarCollapsed = true;
         currentScreen = "loading";
         errorMessage = null;
 
-        exam = null;
-        assessment = null;
+        questionData = null;
+        answerData = null;
         answerImages = [];
 
         try {
@@ -56,7 +56,7 @@
                 qFormData.append("images", img.blob, `q_page_${index}.jpg`),
             );
 
-            const qRes = await fetch("/api/extract", {
+            const qRes = await fetch("/api/question", {
                 method: "POST",
                 body: qFormData,
             });
@@ -65,16 +65,16 @@
                 throw new Error(
                     (await qRes.json()).error || "Extraction failed.",
                 );
-            exam = await qRes.json();
+            questionData = await qRes.json();
 
             loadingStage = "evaluating";
             const aFormData = new FormData();
-            aFormData.append("exam", JSON.stringify(exam));
+            aFormData.append("question", JSON.stringify(questionData));
             processedAImages.forEach((img, index) =>
                 aFormData.append("images", img.blob, `a_page_${index}.jpg`),
             );
 
-            const aRes = await fetch("/api/evaluate", {
+            const aRes = await fetch("/api/answer", {
                 method: "POST",
                 body: aFormData,
             });
@@ -83,7 +83,7 @@
                 throw new Error(
                     (await aRes.json()).error || "Evaluation failed.",
                 );
-            assessment = await aRes.json();
+            answerData = await aRes.json();
 
             currentScreen = "results";
         } catch (error: unknown) {
@@ -91,8 +91,8 @@
             errorMessage =
                 error instanceof Error ? error.message : "Processing failed.";
 
-            exam = null;
-            assessment = null;
+            questionData = null;
+            answerData = null;
             answerImages = [];
 
             currentScreen = "upload";
@@ -105,8 +105,8 @@
         questionFiles = [];
         answerFiles = [];
         answerImages = [];
-        exam = null;
-        assessment = null;
+        questionData = null;
+        answerData = null;
         errorMessage = null;
         currentScreen = "upload";
         isSidebarCollapsed = false;
@@ -135,7 +135,7 @@
             {:else if currentScreen === "loading"}
                 <LoadingScreen stage={loadingStage} />
             {:else if currentScreen === "results"}
-                <ResultScreen {exam} {assessment} {answerImages} />
+                <ResultScreen {questionData} {answerData} {answerImages} />
             {/if}
         </main>
     </div>

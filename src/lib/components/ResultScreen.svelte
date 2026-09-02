@@ -1,22 +1,22 @@
 <script lang="ts">
-    import type { Exam, Assessment, ResultStage } from "$lib/types";
+    import type { Question, Answer, ResultStage } from "$lib/types";
     import QuestionPanel from "./QuestionPanel.svelte";
     import AnswerPanel from "./AnswerPanel.svelte";
 
     interface Props {
-        exam: Exam | null;
-        assessment: Assessment | null;
+        questionData: Question | null;
+        answerData: Answer | null;
         answerImages: string[];
     }
 
-    let { exam, assessment, answerImages }: Props = $props();
+    let { questionData, answerData, answerImages }: Props = $props();
 
     let activeQuestionId = $state<string | null>(null);
     let activeTab = $state<ResultStage>("questions");
 </script>
 
 <div class="h-full min-h-0 flex flex-col gap-4">
-    {#if exam?.questions?.length}
+    {#if questionData?.items?.length}
         <div
             class="w-full p-1 flex md:hidden gap-1 shrink-0 bg-white rounded-4xl"
         >
@@ -46,7 +46,11 @@
                     ? 'block'
                     : 'hidden'}"
             >
-                <QuestionPanel {exam} {assessment} bind:activeQuestionId />
+                <QuestionPanel
+                    {questionData}
+                    {answerData}
+                    bind:activeQuestionId
+                />
             </div>
             <div
                 class="md:block h-full min-h-0 {activeTab === 'answers'
@@ -55,7 +59,7 @@
             >
                 <AnswerPanel
                     {answerImages}
-                    {assessment}
+                    {answerData}
                     {activeQuestionId}
                     {activeTab}
                 />

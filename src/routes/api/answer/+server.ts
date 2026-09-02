@@ -1,10 +1,8 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { env } from '$env/dynamic/private';
 import { type RequestHandler, json } from '@sveltejs/kit';
-import type { Exam, GeminiContent, Evaluation, Assessment } from '$lib/types';
+import type { Question, GeminiContent, Answer } from '$lib/types';
 import fetchAndParseAI from '$lib/server/ai';
-
-type RawEvaluation = Evaluation & { pages_found_on?: number[], transcribed_text?: string };
 
 const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
@@ -12,13 +10,13 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const formData = await request.formData();
 		const files = formData.getAll('images') as File[];
-		const examStr = formData.get('exam') as string;
+		const questionStr = formData.get('question') as string;
 
-		if (!files.length || !examStr) {
+		if (!files.length || !questionStr) {
 			return json({ error: 'Missing required data' }, { status: 400 });
 		}
 
-		const exam = JSON.parse(examStr) as Exam;
+		const questionData = JSON.parse(questionStr) as Question;
 
 		const contents: GeminiContent[] = (await Promise.all(files.map(async (file, index) => [
 			{ text: `--- START OF IMAGE PAGE INDEX: ${index} ---` },
@@ -26,8 +24,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		]))).flat();
 
 		contents.push({
-			text: `You are an expert ${exam.subject || 'school'} teacher for ${exam.grade_level || 'students'}.
-            Here are the questions in JSON format: ${JSON.stringify(exam.questions)}
+			text: `You are an expert ${questionData.subject || 'school'} teacher for ${questionData.grade_level || 'students'}.
+            Here are the questions in JSON format: ${JSON.stringify(questionData.items)}
 
             CRITICAL INSTRUCTION: You MUST ONLY evaluate the exact questions provided in the JSON array above. Do NOT evaluate or assign scores to any other answers you might see on the page that do not exist in the provided JSON.
 
@@ -50,9 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
             6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.`
 		});
 
-		const parsedData = await fetchAndParseAI<{
-			evaluations: RawEvaluation[]
-		}>((model) =>
+		const parsedData = await fetchAndParseAI<Pick<Answer, 'items'>>((model) =>
 			ai.models.generateContent({
 				model,
 				contents,
@@ -62,7 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					responseSchema: {
 						type: Type.OBJECT,
 						properties: {
-							evaluations: {
+							items: {
 								type: Type.ARRAY,
 								items: {
 									type: Type.OBJECT,
@@ -114,50 +110,47 @@ export const POST: RequestHandler = async ({ request }) => {
 								}
 							}
 						},
-						required: ['evaluations']
+						required: ['items']
 					}
 				}
 			}),
-			2, 'Evaluation API'
+			2, 'Answer API'
 		);
 
 		let finalTotalScore = 0;
 
-		if (parsedData?.evaluations?.length) {
-			parsedData.evaluations = parsedData.evaluations.filter(ev => exam.questions.some(q => q.id === ev.question_id));
+		if (parsedData?.items?.length) {
+			parsedData.items = parsedData.items.filter(ans => questionData.items.some(q => q.id === ans.question_id));
 
-			parsedData.evaluations.forEach(ev => {
-				const q = exam.questions.find(q => q.id === ev.question_id);
+			parsedData.items.forEach(ans => {
+				const q = questionData.items.find(q => q.id === ans.question_id);
 				if (q?.marks !== undefined) {
 					const maxMarks = Number(q.marks);
-					let rawAwarded = Number(ev.score_awarded) || 0;
+					let rawAwarded = Number(ans.score_awarded) || 0;
 
-					if (rawAwarded === 0 && ev.feedback.trim().toLowerCase().startsWith('correct')) {
+					if (rawAwarded === 0 && ans.feedback.trim().toLowerCase().startsWith('correct')) {
 						rawAwarded = maxMarks;
 					}
 
 					const awarded = Number(Math.min(rawAwarded, maxMarks).toFixed(2));
 
-					ev.score_awarded = awarded;
-					ev.score_string = `${awarded} / ${maxMarks}`;
+					ans.score_awarded = awarded;
+					ans.score_string = `${awarded} / ${maxMarks}`;
 					finalTotalScore += awarded;
 				}
-
-				delete ev.pages_found_on;
-				delete ev.transcribed_text;
 			});
 		}
 
-		const assessmentResult: Assessment = {
+		const answerResult: Answer = {
 			total_score: Number(finalTotalScore.toFixed(2)),
-			evaluations: (parsedData?.evaluations as Evaluation[]) || []
+			items: parsedData?.items || []
 		};
 
-		return json(assessmentResult);
+		return json(answerResult);
 	}
 	catch (error: unknown) {
-		console.error('Evaluation Error:', error);
-		const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on extraction.' : 'Failed to evaluate answers.';
+		console.error('Answer API Error:', error);
+		const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on answer parsing.' : 'Failed to evaluate answers.';
 		return json({ error: msg }, { status: 500 });
 	}
 };

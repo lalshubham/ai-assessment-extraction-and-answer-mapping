@@ -1,15 +1,15 @@
 <script lang="ts">
     import { tick } from "svelte";
-    import type { Assessment, ResultStage } from "$lib/types";
+    import type { Answer, ResultStage } from "$lib/types";
 
     interface Props {
         answerImages: string[];
-        assessment: Assessment | null;
+        answerData: Answer | null;
         activeQuestionId: string | null;
         activeTab: ResultStage;
     }
 
-    let { answerImages, assessment, activeQuestionId, activeTab }: Props =
+    let { answerImages, answerData, activeQuestionId, activeTab }: Props =
         $props();
 
     let scrollContainer = $state<HTMLElement | null>(null);
@@ -135,21 +135,21 @@
                         class="w-full block"
                     />
 
-                    {#if assessment?.evaluations}
-                        {#each assessment.evaluations as ev (ev.question_id)}
-                            {#if ev.status !== "unanswered" && ev.regions && ev.regions.length > 0}
+                    {#if answerData?.items}
+                        {#each answerData.items as ans (ans.question_id)}
+                            {#if ans.status !== "unanswered" && ans.regions && ans.regions.length > 0}
                                 {@const [awarded, max] = (
-                                    ev.score_string || "0 / 1"
+                                    ans.score_string || "0 / 1"
                                 )
                                     .split("/")
                                     .map(Number)}
 
-                                {#each ev.regions as region, rIndex (rIndex)}
+                                {#each ans.regions as region, rIndex (rIndex)}
                                     {#if region.page_index === index && region.bounding_box && region.bounding_box.length === 4}
                                         <div
-                                            id="box-{ev.question_id}-{rIndex}"
+                                            id="box-{ans.question_id}-{rIndex}"
                                             class="absolute border-2 transition-colors duration-200 rounded-lg {activeQuestionId ===
-                                            ev.question_id
+                                            ans.question_id
                                                 ? awarded === 0
                                                     ? 'border-red-500 bg-red-500/20'
                                                     : awarded < max
@@ -168,7 +168,7 @@
                                                 region.bounding_box[0]) /
                                                 10}%;"
                                         >
-                                            {#if activeQuestionId === ev.question_id}
+                                            {#if activeQuestionId === ans.question_id}
                                                 <span
                                                     class="absolute -top-[24px] left-1 text-white px-2 py-0.5 text-sm rounded-t-lg {awarded ===
                                                     0
@@ -177,8 +177,8 @@
                                                           ? 'bg-orange-500'
                                                           : 'bg-green-500'}"
                                                 >
-                                                    Q{ev.question_id}
-                                                    {ev.regions.length > 1
+                                                    Q{ans.question_id}
+                                                    {ans.regions.length > 1
                                                         ? `- Part ${rIndex + 1}`
                                                         : ""}
                                                 </span>
