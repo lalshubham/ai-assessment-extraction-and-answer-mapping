@@ -22,6 +22,23 @@ export default async function fetchAndParseAI<T>(
                     return JSON.parse(cleaned) as T;
                 }
                 catch (error) {
+                    const lastValidBrace = cleaned.lastIndexOf('}');
+
+                    if (lastValidBrace !== -1) {
+                        const truncated = cleaned.substring(0, lastValidBrace + 1);
+                        const suffixes = ['', ']', ']}', '}', '}]}'];
+
+                        for (const suffix of suffixes) {
+                            try {
+                                const repairedJson = JSON.parse(truncated + suffix) as T;
+                                console.warn(`[${apiName}] Auto-repaired truncated JSON response.`);
+                                return repairedJson;
+                            } catch (e) {
+                                continue;
+                            }
+                        }
+                    }
+
                     const match = cleaned.match(/\{[\s\S]*\}/);
                     if (match) {
                         try {

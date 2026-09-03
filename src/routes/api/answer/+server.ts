@@ -45,7 +45,8 @@ export const POST: RequestHandler = async ({ request }) => {
                - MULTI-PAGE REQUIREMENT: For EVERY page index you listed in 'pages_found_on', you MUST create a corresponding region object in this array. If a question is answered on Page 2 and continued on Page 3, you MUST output TWO region objects.
                - RULE 1 (Horizontal - xmin/xmax): Add generous padding (15-20 units) to the left and right. xmin MUST enclose the handwritten question identifier. xmax MUST safely clear the absolute furthest word on the right so trailing letters are not cut off.
                - RULE 2 (Vertical - ymin/ymax - CRITICAL): For closely written lines on a page, DO NOT add excessive vertical padding. ymin MUST start just above the student's answer, and ymax MUST stop STRICTLY BEFORE the text of the next question or section header begins. Do NOT let the bounding box bleed into or overlap with adjacent answers above or below it.
-            6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.`
+            6. Set status to 'unanswered' ONLY if the student completely failed to write the question number on the page. If the number is written, it MUST be marked 'answered'.
+            7. CONCISENESS RULE (CRITICAL): Answer sheets can be long. To prevent output truncation, keep 'transcribed_text' strictly to the core answer. Keep 'feedback' as short as possible. Limit token usage.`
 		});
 
 		const parsedData = await fetchAndParseAI<Pick<Answer, 'items'>>((model) =>
