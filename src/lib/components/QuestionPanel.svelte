@@ -1,6 +1,6 @@
 <script lang="ts">
     import { SvelteSet } from "svelte/reactivity";
-    import type { Question, Answer } from "$lib/types";
+    import type { Question, Answer } from "#lib/types.ts";
 
     interface Props {
         questionData: Question;

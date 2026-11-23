@@ -1,20 +1,23 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { env } from '$env/dynamic/private';
-import { json, type RequestHandler } from '@sveltejs/kit';
-import type { GeminiContent, Question, QuestionItem } from '$lib/types';
-import fetchAndParseAI from '$lib/server/ai';
+import { GEMINI_API_KEY } from '$app/env/private';
+import { type RequestHandler } from '@sveltejs/kit';
+import type { GeminiContent, Question, QuestionItem } from '#lib/types.ts';
+import fetchAndParseAI from '#lib/server/ai.ts';
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
         const formData = await request.formData();
         const files = formData.getAll('images') as File[];
 
-        if (!files.length) return json({ error: 'Invalid input payload' }, { status: 400 });
+        if (!files.length) return Response.json({ error: 'Invalid input payload' }, { status: 400 });
 
-        const contents: GeminiContent[] = await Promise.all(files.map(async file => ({
-            inlineData: { data: Buffer.from(await file.arrayBuffer()).toString('base64'), mimeType: file.type || 'image/jpeg' }
+        const contents: GeminiContent[] = await Promise.all(files.map(async (file) => ({
+            inlineData: {
+                data: Buffer.from(await file.arrayBuffer()).toString('base64'),
+                mimeType: file.type || 'image/jpeg'
+            }
         })));
 
         contents.push({
@@ -88,19 +91,22 @@ export const POST: RequestHandler = async ({ request }) => {
             for (const [equation, uniqueParentIds] of Object.entries(sectionEquationsMap)) {
                 const numbers = (equation.match(/\d+(\.\d+)?/g) || []).map(Number);
                 const actualCount = uniqueParentIds.size;
-                const trueMarks = (numbers[0] === actualCount) ? numbers[1] : (numbers[1] === actualCount ? numbers[0] : null);
+
+                const trueMarks = numbers[0] === actualCount
+                    ? numbers[1]
+                    : numbers[1] === actualCount ? numbers[0] : null;
 
                 if (trueMarks != null) {
-                    uniqueParentIds.forEach(pId => questionsByParentId[pId].forEach(q => q.marks = trueMarks / questionsByParentId[pId].length));
+                    uniqueParentIds.forEach((pId) => questionsByParentId[pId].forEach((q) => q.marks = trueMarks / questionsByParentId[pId].length));
                 }
             }
 
             for (const subQs of Object.values(questionsByParentId)) {
-                const pMark = subQs.find(q => q.parent_total_marks != null)?.parent_total_marks;
-                if (subQs.length > 1 && pMark != null) subQs.forEach(q => q.marks = pMark / subQs.length);
+                const pMark = subQs.find((q) => q.parent_total_marks != null)?.parent_total_marks;
+                if (subQs.length > 1 && pMark != null) subQs.forEach((q) => q.marks = pMark / subQs.length);
             }
 
-            parsedData.items.forEach(q => {
+            parsedData.items.forEach((q) => {
                 q.marks = Number((q.marks || 0).toFixed(2));
                 calculatedTotalMarks += q.marks;
             });
@@ -115,11 +121,11 @@ export const POST: RequestHandler = async ({ request }) => {
             items: parsedData?.items || []
         };
 
-        return json(questionResult);
+        return Response.json(questionResult);
     }
     catch (error: unknown) {
         console.error('Question API Error:', error);
         const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on extraction.' : 'Failed to extract questions.';
-        return json({ error: msg }, { status: 500 });
+        return Response.json({ error: msg }, { status: 500 });
     }
 };

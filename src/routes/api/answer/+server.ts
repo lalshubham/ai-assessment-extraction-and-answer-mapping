@@ -1,10 +1,10 @@
 import { GoogleGenAI, Type } from '@google/genai';
-import { env } from '$env/dynamic/private';
-import { type RequestHandler, json } from '@sveltejs/kit';
-import type { Question, GeminiContent, Answer } from '$lib/types';
-import fetchAndParseAI from '$lib/server/ai';
+import { GEMINI_API_KEY } from '$app/env/private';
+import { type RequestHandler } from '@sveltejs/kit';
+import type { Question, GeminiContent, Answer } from '#lib/types.ts';
+import fetchAndParseAI from '#lib/server/ai.ts';
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const questionStr = formData.get('question') as string;
 
 		if (!files.length || !questionStr) {
-			return json({ error: 'Missing required data' }, { status: 400 });
+			return Response.json({ error: 'Missing required data' }, { status: 400 });
 		}
 
 		const questionData = JSON.parse(questionStr) as Question;
@@ -121,10 +121,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		let finalTotalScore = 0;
 
 		if (parsedData?.items?.length) {
-			parsedData.items = parsedData.items.filter(ans => questionData.items.some(q => q.id === ans.question_id));
+			parsedData.items = parsedData.items.filter((ans) => questionData.items.some((q) => q.id === ans.question_id));
 
-			parsedData.items.forEach(ans => {
-				const q = questionData.items.find(q => q.id === ans.question_id);
+			parsedData.items.forEach((ans) => {
+				const q = questionData.items.find((q) => q.id === ans.question_id);
 				if (q?.marks !== undefined) {
 					const maxMarks = Number(q.marks);
 					let rawAwarded = Number(ans.score_awarded) || 0;
@@ -147,11 +147,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			items: parsedData?.items || []
 		};
 
-		return json(answerResult);
+		return Response.json(answerResult);
 	}
 	catch (error: unknown) {
 		console.error('Answer API Error:', error);
 		const msg = error instanceof Error && error.message.includes('truncated') ? 'AI output truncated on answer parsing.' : 'Failed to evaluate answers.';
-		return json({ error: msg }, { status: 500 });
+		return Response.json({ error: msg }, { status: 500 });
 	}
 };

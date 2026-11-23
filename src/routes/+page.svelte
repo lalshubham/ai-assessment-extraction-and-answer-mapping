@@ -4,13 +4,13 @@
         LoadingStage,
         Question,
         Answer,
-    } from "$lib/types";
-    import { processFileToImages } from "$lib/utils/file";
-    import Sidebar from "$lib/components/Sidebar.svelte";
-    import Navbar from "$lib/components/Navbar.svelte";
-    import UploadScreen from "$lib/components/UploadScreen.svelte";
-    import LoadingScreen from "$lib/components/LoadingScreen.svelte";
-    import ResultScreen from "$lib/components/ResultScreen.svelte";
+    } from "#lib/types.ts";
+    import { processFileToImages } from "#lib/utils/file.ts";
+    import Sidebar from "#lib/components/Sidebar.svelte";
+    import Navbar from "#lib/components/Navbar.svelte";
+    import UploadScreen from "#lib/components/UploadScreen.svelte";
+    import LoadingScreen from "#lib/components/LoadingScreen.svelte";
+    import ResultScreen from "#lib/components/ResultScreen.svelte";
 
     let isMobileSidebarOpen = $state(false);
     let isSidebarCollapsed = $state(false);

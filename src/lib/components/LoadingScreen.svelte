@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { LoadingStage } from "$lib/types";
+    import type { LoadingStage } from "#lib/types.ts";
 
     let { stage }: { stage: LoadingStage } = $props();
     let currentIndex = $state(0);

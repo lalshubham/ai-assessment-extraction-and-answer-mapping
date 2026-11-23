@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Question, Answer, ResultStage } from "$lib/types";
+    import type { Question, Answer, ResultStage } from "#lib/types.ts";
     import QuestionPanel from "./QuestionPanel.svelte";
     import AnswerPanel from "./AnswerPanel.svelte";
 

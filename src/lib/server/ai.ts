@@ -33,7 +33,7 @@ export default async function fetchAndParseAI<T>(
                                 const repairedJson = JSON.parse(truncated + suffix) as T;
                                 console.warn(`[${apiName}] Auto-repaired truncated JSON response.`);
                                 return repairedJson;
-                            } catch (e) {
+                            } catch {
                                 continue;
                             }
                         }

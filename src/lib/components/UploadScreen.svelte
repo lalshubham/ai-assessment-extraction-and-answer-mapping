@@ -1,17 +1,19 @@
 <script lang="ts">
-    import { getPdfPageCount } from "$lib/utils/file";
+    import { getPdfPageCount } from "#lib/utils/file.ts";
+
+    interface Props {
+        questionFiles: File[];
+        answerFiles: File[];
+        errorMessage: string | null;
+        onStart: () => void;
+    }
 
     let {
         questionFiles = $bindable([]),
         answerFiles = $bindable([]),
         errorMessage = $bindable(),
         onStart,
-    } = $props<{
-        questionFiles: File[];
-        answerFiles: File[];
-        errorMessage: string | null;
-        onStart: () => void;
-    }>();
+    }: Props = $props();
 
     type FileMeta = {
         id: string;

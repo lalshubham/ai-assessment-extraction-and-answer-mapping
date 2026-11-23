@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { ScreenStage } from "$lib/types";
+    import type { ScreenStage } from "#lib/types.ts";
 
     interface Props {
         currentScreen: ScreenStage;

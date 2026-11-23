@@ -1,6 +1,6 @@
 <script lang="ts">
     import { tick } from "svelte";
-    import type { Answer, ResultStage } from "$lib/types";
+    import type { Answer, ResultStage } from "#lib/types.ts";
 
     interface Props {
         answerImages: string[];
